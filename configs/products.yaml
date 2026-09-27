@@ -1,0 +1,268 @@
+# Calibrazione proposta T01; quantità per impresa alla scala di riferimento.
+schema_version: 1
+products:
+- id: 1
+  name: food
+  label: Cibo
+  unit: porzione
+  kind: final
+  need_group: primary
+  need_mean: 10.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 0.1
+    materials: 0.1
+  depreciation: 0.15
+  opening_price: '2'
+  opening_unit_cost: '1'
+  initial_output: 3600.0
+  initial_inputs:
+    wholesale_energy: 720.0
+    materials: 720.0
+  initial_capital: 60.0
+  productivity: 120.0
+  capacity_per_capital: 60.0
+  initial_workers: 30
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 2
+  name: household_energy
+  label: Energia domestica
+  unit: kWh domestico
+  kind: final
+  need_group: primary
+  need_mean: 5.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 1.2
+  depreciation: 1.0
+  opening_price: '3'
+  opening_unit_cost: '2'
+  initial_output: 0.0
+  initial_inputs:
+    wholesale_energy: 4320.0
+  initial_capital: 60.0
+  productivity: 100.0
+  capacity_per_capital: 30.0
+  initial_workers: 18
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 3
+  name: mobility
+  label: Mobilità
+  unit: tragitto
+  kind: final
+  need_group: primary
+  need_mean: 3.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 0.3
+    materials: 0.05
+  depreciation: 1.0
+  opening_price: '4'
+  opening_unit_cost: '2'
+  initial_output: 0.0
+  initial_inputs:
+    wholesale_energy: 648.0
+    materials: 108.0
+  initial_capital: 60.0
+  productivity: 60.0
+  capacity_per_capital: 18.0
+  initial_workers: 18
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 4
+  name: clothing
+  label: Abbigliamento
+  unit: capo
+  kind: final
+  need_group: secondary
+  need_mean: 0.2
+  need_std: 0.1
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 0.5
+    materials: 2.0
+  depreciation: 0.01
+  opening_price: '30'
+  opening_unit_cost: '15'
+  initial_output: 80.0
+  initial_inputs:
+    wholesale_energy: 80.0
+    materials: 320.0
+  initial_capital: 60.0
+  productivity: 16.0
+  capacity_per_capital: 2.0
+  initial_workers: 5
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 5
+  name: entertainment
+  label: Intrattenimento
+  unit: sessione
+  kind: final
+  need_group: secondary
+  need_mean: 0.5
+  need_std: 0.2
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 0.2
+  depreciation: 1.0
+  opening_price: '10'
+  opening_unit_cost: '4'
+  initial_output: 0.0
+  initial_inputs:
+    wholesale_energy: 80.0
+  initial_capital: 60.0
+  productivity: 40.0
+  capacity_per_capital: 4.0
+  initial_workers: 5
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 6
+  name: travel
+  label: Viaggi
+  unit: pernottamento
+  kind: final
+  need_group: secondary
+  need_mean: 0.1
+  need_std: 0.05
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 2.0
+    materials: 0.2
+  depreciation: 1.0
+  opening_price: '80'
+  opening_unit_cost: '30'
+  initial_output: 0.0
+  initial_inputs:
+    wholesale_energy: 160.0
+    materials: 16.0
+  initial_capital: 60.0
+  productivity: 8.0
+  capacity_per_capital: 0.8
+  initial_workers: 5
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 7
+  name: luxury
+  label: Lusso
+  unit: unità lusso
+  kind: final
+  need_group: luxury
+  need_mean: 0.0
+  need_std: 0.0
+  unlimited_need: true
+  recipe:
+    wholesale_energy: 2.0
+    materials: 1.0
+    metals: 0.5
+  depreciation: 0.001
+  opening_price: '200'
+  opening_unit_cost: '80'
+  initial_output: 12.0
+  initial_inputs:
+    wholesale_energy: 48.0
+    materials: 24.0
+    metals: 12.0
+  initial_capital: 60.0
+  productivity: 3.0
+  capacity_per_capital: 0.3
+  initial_workers: 4
+  natural_reserve: 0.0
+  quality: 1.0
+- id: 8
+  name: wholesale_energy
+  label: Energia all’ingrosso
+  unit: kWh ingrosso
+  kind: resource
+  need_group: none
+  need_mean: 0.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe: {}
+  depreciation: 0.05
+  opening_price: '1'
+  opening_unit_cost: '0.5'
+  initial_output: 4800.0
+  initial_inputs: {}
+  initial_capital: 60.0
+  productivity: 200.0
+  capacity_per_capital: 80.0
+  initial_workers: 24
+  natural_reserve: 10000000.0
+  quality: 1.0
+- id: 9
+  name: materials
+  label: Materiali
+  unit: kg materiale
+  kind: resource
+  need_group: none
+  need_mean: 0.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 0.2
+  depreciation: 0.0
+  opening_price: '2'
+  opening_unit_cost: '1'
+  initial_output: 1000.0
+  initial_inputs:
+    wholesale_energy: 400.0
+  initial_capital: 60.0
+  productivity: 100.0
+  capacity_per_capital: 20.0
+  initial_workers: 10
+  natural_reserve: 1000000.0
+  quality: 1.0
+- id: 10
+  name: metals
+  label: Metalli
+  unit: kg metallo
+  kind: resource
+  need_group: none
+  need_mean: 0.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 2.0
+  depreciation: 0.0
+  opening_price: '20'
+  opening_unit_cost: '10'
+  initial_output: 20.0
+  initial_inputs:
+    wholesale_energy: 80.0
+  initial_capital: 60.0
+  productivity: 5.0
+  capacity_per_capital: 0.4
+  initial_workers: 4
+  natural_reserve: 100000.0
+  quality: 1.0
+- id: 11
+  name: capital
+  label: Bene capitale
+  unit: unità capitale
+  kind: capital
+  need_group: none
+  need_mean: 0.0
+  need_std: 0.0
+  unlimited_need: false
+  recipe:
+    wholesale_energy: 3.0
+    materials: 5.0
+  depreciation: 0.001
+  opening_price: '100'
+  opening_unit_cost: '50'
+  initial_output: 40.0
+  initial_inputs:
+    wholesale_energy: 240.0
+    materials: 400.0
+  initial_capital: 60.0
+  productivity: 5.0
+  capacity_per_capital: 0.8
+  initial_workers: 8
+  natural_reserve: 0.0
+  quality: 1.0
