@@ -1,22 +1,22 @@
 # Piano di implementazione D1
 
-Aggiornamento iniziale: 27 settembre 2026. Le specifiche sono pronte; **nessun task software è stato avviato**. Questo è lo stato documentale, non un rapporto di test.
+Aggiornamento: 27 settembre 2026. **T01 completato e verificato**, fondamenta D0 eseguibili. D1 resta da implementare nelle milestone successive.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno.
-- Prossimo task: **T01**.
-- Ultimo risultato: pacchetto integrato 3.2: specifiche modulari, nove task, rimandi verificati e decisioni di prodotto esplicite.
-- Codice esistente: nessuno.
-- Test software eseguiti: nessuno.
-- Blocchi noti: nessuno per iniziare T01; le scelte tecniche/calibrazioni residue sono assegnate in DECISIONS.
-- Prima azione: leggere la scheda T01 e implementare contratti, configurazione, ledger e inizializzazione.
+- Task corrente: nessuno; T01 chiuso.
+- Prossimo task: **T02**, da avviare su incarico.
+- Ultimo risultato: package 0.1.0, configurazione/catalogo, ledger e settlement atomico, inizializzazione NumPy deterministica, CLI settimana 0.
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint implementativo `26986e7`.
+- Test software eseguiti: suite pytest, Ruff, build e installazione wheel; [report T01](docs/reports/T01.md).
+- Blocchi noti: nessuno. Calibrazione macro e dinamica non ancora verificate.
+- Prima azione successiva: leggere T02 e i moduli collegati; implementare soltanto le fasi di economia reale assegnate.
 
 ## Stato delle milestone
 
 | ID | Task | Dipendenze | Stato | Evidenza di completamento |
 |---|---|---|---|---|
-| T01 | [Contratti e inizializzazione](tasks/T01.md) | Nessuna | NOT_STARTED | Non ancora implementato |
+| T01 | [Contratti e inizializzazione](tasks/T01.md) | Nessuna | DONE | [Report](docs/reports/T01.md): 52 test, Ruff, build, CLI e wheel verificati; `26986e7` |
 | T02 | [Economia reale](tasks/T02.md) | T01 | NOT_STARTED | Non ancora implementato |
 | T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | NOT_STARTED | Non ancora implementato |
 | T04 | [Governo e debito](tasks/T04.md) | T03 | NOT_STARTED | Non ancora implementato |
@@ -51,4 +51,4 @@ Per ogni task registrare data, commit se disponibile, parti implementate, comand
 
 ## Vincolo trasversale aggiunto: efficienza NumPy
 
-T01 predispone stato per colonne/ID/RNG e confine ledger; T02 introduce primi kernel batch; T03–T05 preservano allocazioni e precisione; T06 isola buffer/checkpoint senza copie dello storico; T08 misura profiling ed equivalenza. Leggere il modulo performance solo nei task pertinenti, secondo le schede aggiornate. Nessun task è ancora iniziato.
+T01 ha predisposto stato per colonne/ID/RNG e confine ledger, con copie di lettura isolate e test. T02 introduce primi kernel batch; T03–T05 preservano allocazioni e precisione; T06 isola buffer/checkpoint senza copie dello storico; T08 misura profiling ed equivalenza. Leggere il modulo performance solo nei task pertinenti, secondo le schede aggiornate.

@@ -42,7 +42,7 @@ I numeri § sono gli identificatori storici delle regole 3.1, conservati nei doc
 - [Guida alla lettura](READING_GUIDE.md), [struttura repository](technical/repository_layout.md).
 - [Archivio storico](archive/README.md): non normativo, non necessario all'implementazione ordinaria.
 
-Tutti i percorsi dell'indice sono presenti. Le cartelle del futuro codice saranno create dai task; la loro assenza oggi è dichiarata nel README e non indica documenti mancanti.
+Tutti i percorsi dell'indice sono presenti. T01 ha creato `src/economic_sim/`, `configs/` e `tests/`; backend e frontend restano alle milestone successive. Dettagli implementativi e calibrazione nei [contratti T01](technical/t01_contracts.md), evidenze nel [report T01](reports/T01.md).
 
 ## Efficienza e calcolo vettoriale
 

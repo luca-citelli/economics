@@ -4,6 +4,8 @@ Documento normativo corrente (revisione 3.2). Riferimenti storici: §13.1–13.2
 
 ### 13.1 API Python del motore
 
+**Stato dopo T01:** sono eseguibili `load_config`, `Simulation.from_config`, `validate`, `snapshot` e la CLI di apertura. Contratti minimi in `src/economic_sim/contracts.py`, dettagli nei [contratti T01](t01_contracts.md). L'esempio completo seguente è il traguardo delle milestone successive: step, politiche, checkpoint ed export temporali non sono ancora implementati.
+
 ```python
 config = load_config("configs/base.yaml")
 sim = Simulation.from_config(config)

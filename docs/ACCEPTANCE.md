@@ -1,14 +1,14 @@
 # Matrice di accettazione D1
 
-Stato iniziale: **tutti i requisiti software sono NON VERIFICATI**. Il pacchetto contiene specifiche, non un simulatore collaudato. Aggiornare ogni riga con il riferimento al test/report e il risultato reale quando disponibile.
+Aggiornamento 27 settembre 2026: fondamenta **T01 verificate**, con limiti espliciti nelle righe condivise con milestone future. Evidenze nel [report T01](reports/T01.md), codice `26986e7`. Gli altri requisiti D1 restano non verificati.
 
 Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice non può ridurre il perimetro di riferimento §2.3.
 
 | ID | Requisito | Task | Evidenza richiesta | Stato iniziale |
 |---|---|---|---|---|
-| A01 | Una economia, Governo/BC/valuta unici; popolazione e banche configurabili | T01 | Config e inizializzazione, casi invalidi | Non verificato |
-| A02 | Ledger a contropartite, bilanci di apertura e registri proprietari coerenti | T01 | Test identità e riepilogo settimana 0 | Non verificato |
-| A03 | Credito/depositi/riserve distinti, settlement atomico | T01/T03 | Prestito/rimborso e pagamenti interbancari | Non verificato |
+| A01 | Una economia, Governo/BC/valuta unici; popolazione e banche configurabili | T01 | `test_config.py`, `test_initialization.py`; [report](reports/T01.md) | Verificato T01 |
+| A02 | Ledger a contropartite, bilanci di apertura e registri proprietari coerenti | T01 | `test_opening_accounts_and_ownership`, costi fisici e diagnostica CLI; [report](reports/T01.md) | Verificato T01 |
+| A03 | Credito/depositi/riserve distinti, settlement atomico | T01/T03 | `test_accounting.py`: 100/40, riserve, errori e consegna; [report](reports/T01.md) | Primitive T01 verificate; facilities/decisione creditizia T03 non verificate |
 | A04 | Bisogni primari/secondari/lusso e budget finiti | T02 | Priorità, limite fisico e vincolo di spesa | Non verificato |
 | A05 | Lavoro, salari emergenti, occupazione unica | T02 | Matching e paga settimanale reale | Non verificato |
 | A06 | Produzione vincolata da input, capitale e lavoro; giacimenti | T02 | Bilanci fisici e casi senza input/lavoro | Non verificato |
@@ -52,7 +52,7 @@ T09 può dichiarare D1 completo soltanto quando le righe pertinenti sono verific
 
 | ID | Requisito | Task | Evidenza richiesta | Stato iniziale |
 |---|---|---|---|---|
-| A30 | Stato per colonne e layout compatibile NumPy | T01 | Shape/dtype/ID stabili, nessuna doppia autorità | Non verificato |
+| A30 | Stato per colonne e layout compatibile NumPy | T01 | `test_column_mapping_isolation_and_no_duplicate_balances`; [contratti](technical/t01_contracts.md) | Verificato T01 |
 | A31 | Kernel batch con riferimento scalare | T02/T08 | Stessi input/RNG, tolleranze e decisioni preservate | Non verificato |
-| A32 | Precisione monetaria e buffer/rollback coerenti | T01/T06 | Budget esatti, viste isolate, storico non ricopiato per intero | Non verificato |
+| A32 | Precisione monetaria e buffer/rollback coerenti | T01/T06 | Budget esatti, contesto Decimal, copie isolate, staging transazioni; [report](reports/T01.md) | T01 verificato; rollback di step/storico/checkpoint T06 non verificati |
 | A33 | Profiling e benchmark di scala | T08 | Costi per fase, kernel vs end-to-end, 10.000/52 e stima 100.000 | Non verificato |

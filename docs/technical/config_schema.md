@@ -64,6 +64,8 @@ I valori non sono una calibrazione a Italia/eurozona né una normativa prudenzia
 
 Il bootstrap deve verificare che esistano imprese per tutti i prodotti necessari, scorte iniziali per avviare la filiera e sufficiente offerta di lavoro. Vietati fabbisogni di input impossibili da produrre o cicli privi di scorte iniziali.
 
+T01 ha implementato lo schema in `src/economic_sim/config.py` e gli scenari di apertura completi in `configs/base.yaml` / `configs/products.yaml`. Parametri, unità, scala, scelte di apertura e fasi ancora disattivate sono documentati nei [contratti T01](t01_contracts.md). L'estratto sopra resta illustrativo del D1, non è il profilo incrementale eseguibile.
+
 ### Parametri tecnici numerici
 
 T01 documenta dtype/shape/unità e versione del layout. T06/T08 espongono eventuale dimensione del batch e limiti dei buffer come impostazioni tecniche: cambiarli non deve modificare il modello. Non trasformare il batch size in durata dello step. Riferimento: [performance_and_vectorization.md](performance_and_vectorization.md).

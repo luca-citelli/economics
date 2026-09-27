@@ -42,7 +42,7 @@ Questi punti sono intenzionalmente assegnati a task; non sono segnaposto di docu
 
 Usare il prossimo ID D disponibile e indicare: data/task; problema; decisione; motivazione; effetti su API/contabilità/UI; sezioni e test interessati. Se cambia una regola già fissata nei moduli correnti, aggiornare il modulo normativo e le relative schede e registrare l'accordo sul cambiamento. Una nota in questo file non prevale da sola su una regola contraria.
 
-Non esistono ancora decisioni derivate da implementazione, benchmark o test del modello.
+Le decisioni derivate dall'implementazione T01 sono registrate sotto; nessun benchmark macro è ancora stato eseguito.
 
 ## Integrazione documentale 3.2
 
@@ -58,3 +58,13 @@ Le scelte residue I001–I009 sono dettagli tecnici/calibrazioni assegnati agli 
 - D020 — Il ledger D1 rimane Decimal; NumPy tratta calcoli numerici e proiezioni non autorevoli. Un futuro ledger a interi scalati è una migrazione tecnica da misurare/validare separatamente, non una scelta imposta ora al proprietario.
 
 I010 — T01 documenta layout/dtype/RNG e confine monetario; T02 implementa i primi kernel; T06 atomicità efficiente; T08 profila e misura la scala. Nessuna decisione bloccante del proprietario su dettagli NumPy.
+
+## Decisioni implementative T01 — 27 settembre 2026
+
+- **D021 — Toolchain Python.** Python 3.11.9, `uv` 0.7.5 verificati su Windows; NumPy 2.2.6, Pydantic 2.11.10, PyYAML 6.0.3, pytest 8.4.2 e Ruff 0.11.13 risolti in `uv.lock`, build Hatchling 1.27.0. Scelta conservativa di una sola minor Python al posto di compatibilità non provata. Nessuna dipendenza API/frontend. I001 risolto per Python; Node resta T07. Test, CLI, build e installazione wheel nel report.
+- **D022 — Calibrazione e scala di apertura.** Catalogo completo con 11 prodotti, ricette esplicite, due cicli di input iniziali, capitale e giacimenti ereditati. Scala per impresa `N/N_ref × C_ref/C`, posti arrotondati per eccesso, cassa/capitale bancario/spesa pubblica pro capite. Alternativa respinta: stock campionati indipendentemente o capacità invariante al crescere della popolazione. Numeri, unità e motivazioni nei [contratti T01](docs/technical/t01_contracts.md); test base, input incompatibili e scale 100/123/2.000 persone. I002 definito, da calibrare in T08.
+- **D023 — Controparti di apertura e proprietà.** Riserve di ogni banca = suoi depositi + capitale sottoscritto; BC detiene un bond ereditato alla pari che copre riserve e Tesoro. Patrimonio iniziale del Governo negativo ed esplicito; nessun conto di suspense. Imprese possiedono depositi, scorte e capitale al costo; ogni emittente ha un proprietario scelto da una permutazione delle persone. È una proprietà iniziale concentrata, sostituibile con distribuzione diffusa se richiesta da calibrazione. I003 risolto; I005 risolto per cassa/nominale di apertura e parametri fiscali, meccanismi T04. Verifiche per ogni entità/strumento/partecipazione, nessuna correzione monetaria implicita.
+- **D024 — Autorità monetaria e stato numerico.** Ledger Decimal, contesto locale a 50 cifre e arrotondamento half-even al micro-UM; proiezioni float64 temporanee immutabili. ID stabili separati dalle righe; matrice fisica con 11 colonne, dataclass solo per contenitori/viste. Copie immutabili preferite alle viste condivise; nessuna promessa di accelerazione. Posting prepara delta/nuovi conti, senza copiare il journal; validatore diagnostico completo. I010 completato per T01. Test su aliasing, budget, riserve insufficienti e consegna atomica.
+- **D025 — Contratti incrementali e determinismo.** Profilo `initialization_only` con tutte le fasi future false; nessuno step fittizio. Stream PCG64 nominati con numeri stabili, canonical JSON/SHA-256 e versioni schema/layout 1. Metadati di run e runtime esclusi dal checksum. Round trip degli schemi e degli stati RNG, esportazione diagnostica, niente import checkpoint anticipato. I007 risolto per contratti minimi; runner, idempotenza e ripresa restano T06.
+
+Stato residuo: **I004 parziale**, propensioni/buffer e parametri bancari di base espliciti; regole e limiti decisionali T02/T03, calibrazione T08. **I006 resta T02/T08**: T01 registra costi delle dotazioni e primitive di vendita, senza produzione/PIL. I008/I009 non anticipati. Nessuna modifica al perimetro D1 o alle regole normative. Evidenze complete: [report T01](docs/reports/T01.md).
