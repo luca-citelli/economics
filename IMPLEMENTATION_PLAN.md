@@ -1,23 +1,23 @@
 # Piano di implementazione D1
 
-Aggiornamento: 27 settembre 2026. **T01 completato e verificato**, fondamenta D0 eseguibili. D1 resta da implementare nelle milestone successive.
+Aggiornamento: 27 settembre 2026. **T02 completato e verificato**, economia reale incrementale eseguibile da CLI. D1 resta da implementare nelle milestone successive.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno; T01 chiuso.
-- Prossimo task: **T02**, da avviare su incarico.
-- Ultimo risultato: package 0.1.0, configurazione/catalogo, ledger e settlement atomico, inizializzazione NumPy deterministica, CLI settimana 0.
-- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint implementativo `26986e7`.
-- Test software eseguiti: suite pytest, Ruff, build e installazione wheel; [report T01](docs/reports/T01.md).
-- Blocchi noti: nessuno. Calibrazione macro e dinamica non ancora verificate.
-- Prima azione successiva: leggere T02 e i moduli collegati; implementare soltanto le fasi di economia reale assegnate.
+- Task corrente: nessuno; T02 chiuso.
+- Prossimo task: **T03**, da avviare su incarico.
+- Ultimo risultato: package 0.2.0, lavoro, produzione, mercati reali, inventari al costo, investimenti da cassa, step atomico e metriche/CSV.
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint implementativo T02 `210063a`.
+- Verifiche eseguite: 86 test, Ruff, build e profilo da 1.000 persone per 52 settimane; [report T02](docs/reports/T02.md).
+- Blocchi software noti: nessuno. Il profilo incrementale mostra un forte calo dell'attività fino a zero consumi nella settimana 52; diagnosi e limiti nel report, nessuna calibrazione macro dichiarata.
+- Prima azione successiva: leggere T03 e i moduli collegati; preservare vincoli, controparti e test T01/T02.
 
 ## Stato delle milestone
 
 | ID | Task | Dipendenze | Stato | Evidenza di completamento |
 |---|---|---|---|---|
 | T01 | [Contratti e inizializzazione](tasks/T01.md) | Nessuna | DONE | [Report](docs/reports/T01.md): 52 test, Ruff, build, CLI e wheel verificati; `26986e7` |
-| T02 | [Economia reale](tasks/T02.md) | T01 | NOT_STARTED | Non ancora implementato |
+| T02 | [Economia reale](tasks/T02.md) | T01 | DONE | [Report](docs/reports/T02.md): 86 test, Ruff, build, 52 settimane/CSV e invarianti; `210063a` |
 | T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | NOT_STARTED | Non ancora implementato |
 | T04 | [Governo e debito](tasks/T04.md) | T03 | NOT_STARTED | Non ancora implementato |
 | T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | NOT_STARTED | Non ancora implementato |
@@ -51,4 +51,4 @@ Per ogni task registrare data, commit se disponibile, parti implementate, comand
 
 ## Vincolo trasversale aggiunto: efficienza NumPy
 
-T01 ha predisposto stato per colonne/ID/RNG e confine ledger, con copie di lettura isolate e test. T02 introduce primi kernel batch; T03–T05 preservano allocazioni e precisione; T06 isola buffer/checkpoint senza copie dello storico; T08 misura profiling ed equivalenza. Leggere il modulo performance solo nei task pertinenti, secondo le schede aggiornate.
+T01 ha predisposto stato per colonne/ID/RNG e confine ledger. T02 ha verificato kernel batch contro riferimenti scalari e undo del singolo step senza copia dei journal storici. T03–T05 preservano allocazioni e precisione; T06 estende isolamento/checkpoint al runner; T08 misura profiling ed equivalenza. Leggere il modulo performance solo nei task pertinenti.

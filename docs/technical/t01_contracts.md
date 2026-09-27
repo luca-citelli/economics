@@ -2,6 +2,8 @@
 
 Versioni: motore `0.1.0`, configurazione/JSON/layout `1`. Questo documento descrive il codice consegnato, senza sostituire i moduli normativi. Le API future restano in [api_contracts.md](api_contracts.md).
 
+Per le estensioni del motore 0.2.0/layout 2, incluso `step()`, consultare i [contratti T02](t02_contracts.md). Le limitazioni seguenti descrivono la consegna T01.
+
 ## Configurazione e calibrazione iniziale
 
 `load_config(path)` legge scenario e catalogo, risolvendo `products_file` relativamente allo scenario. `Config`, `ScenarioFile` e `Catalog` in `src/economic_sim/config.py` sono gli schemi eseguibili; `model_json_schema()` permette di ispezionarli. Tutti i campi dello scenario e del catalogo sono obbligatori, salvo i campi facoltativi delle patch di comando. `configs/base.yaml` e `configs/products.yaml` contengono i valori proposti, non osservazioni empiriche.

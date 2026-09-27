@@ -42,7 +42,7 @@ I numeri § sono gli identificatori storici delle regole 3.1, conservati nei doc
 - [Guida alla lettura](READING_GUIDE.md), [struttura repository](technical/repository_layout.md).
 - [Archivio storico](archive/README.md): non normativo, non necessario all'implementazione ordinaria.
 
-Tutti i percorsi dell'indice sono presenti. T01 ha creato `src/economic_sim/`, `configs/` e `tests/`; backend e frontend restano alle milestone successive. Dettagli implementativi e calibrazione nei [contratti T01](technical/t01_contracts.md), evidenze nel [report T01](reports/T01.md).
+T01 ha creato le fondamenta; T02 ha aggiunto il ciclo reale da CLI in `src/economic_sim/`, `configs/` e `tests/`. Backend e frontend restano alle milestone successive. Apertura nei [contratti T01](technical/t01_contracts.md); algoritmi, profilo e dizionario metriche correnti nei [contratti T02](technical/t02_contracts.md). Evidenze nei report [T01](reports/T01.md) e [T02](reports/T02.md).
 
 ## Efficienza e calcolo vettoriale
 
