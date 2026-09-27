@@ -1,13 +1,19 @@
-"""Contratti dati T01. Nessuna asta, runner o trasporto HTTP implementato."""
+"""Contratti dati T01/T02. Aste finanziarie, runner e HTTP restano alle prossime milestone."""
 
+from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import BeforeValidator, Field, model_validator
 
 from economic_sim.config import Amount, Nonnegative, Positive, Price, Rate, StrictModel
+from economic_sim.money import money
 
 Identifier = Annotated[str, Field(min_length=1)]
 Week = Annotated[int, Field(ge=0)]
+Metric = Annotated[
+    Decimal | float | int | None,
+    BeforeValidator(lambda value: money(value) if isinstance(value, str) else value),
+]
 
 
 class Loan(StrictModel):
@@ -141,9 +147,9 @@ class Snapshot(StrictModel):
     run_id: Identifier
     week: Week
     state_version: Annotated[int, Field(ge=0)]
-    status: Literal["PAUSED"]
+    status: Literal["PAUSED", "ERROR"]
     checksum: Identifier
-    metrics: dict[str, Amount]
+    metrics: dict[str, Metric]
     markets: tuple[MarketResult, ...]
     events: tuple[str, ...]
     pending_commands: tuple[PolicyCommand, ...]

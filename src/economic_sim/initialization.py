@@ -77,6 +77,8 @@ def initialize(config: Config) -> InitialState:
         reservation_wage=float(pc.reservation_wage)
         * r.uniform(1 - pc.wage_spread, 1 + pc.wage_spread, n),
         expected_income=np.zeros(n),
+        unemployment_weeks=np.zeros(n, dtype=np.int64),
+        deprivation_weeks=np.zeros(n, dtype=np.int64),
         needs=needs,
         satisfaction=np.zeros((n, 7)),
     )
@@ -94,6 +96,10 @@ def initialize(config: Config) -> InitialState:
         planned_workers=[math.ceil(p.initial_workers * scale) for p in products],
         previous_sales=np.zeros(f),
         previous_orders=np.zeros(f),
+        previous_unfilled=np.zeros(f),
+        observed_unit_cost=[float(p.opening_unit_cost) for p in products],
+        previous_vacancies=np.zeros(f, dtype=np.int64),
+        previous_applications=np.zeros(f, dtype=np.int64),
     )
     banks = BankState(
         bank_ids,

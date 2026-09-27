@@ -34,7 +34,7 @@ class PhysicalRegister:
         shape = (len(entity_ids), len(product_ids))
         self._stocks = {
             name: np.zeros(shape, dtype=np.float64)
-            for name in ("inventory", "installed_capital", "natural_reserve")
+            for name in ("inventory", "installed_capital", "pending_capital", "natural_reserve")
         }
         self._journal: list[PhysicalEntry] = []
         self._transaction_ids: set[str] = set()
@@ -105,7 +105,12 @@ class PhysicalRegister:
     def post(self, entries):
         self._commit_prepared(entries, self.prepare(entries))
 
-    def validate(self):
+    def validate(self, *, full=True):
+        if not full:
+            for values in self._stocks.values():
+                if not np.isfinite(values).all() or (values < 0).any():
+                    raise ValueError("Stock fisico negativo/non finito")
+            return
         reconstructed = {key: np.zeros_like(value) for key, value in self._stocks.items()}
         for e in self._journal:
             reconstructed[e.stock][

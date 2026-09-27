@@ -65,6 +65,20 @@ class Settlement:
         return lines
 
     @money_context
+    def pay_wage(self, tx_id, employer, worker, amount, *, week):
+        amount = positive_money(amount)
+        lines = self._payment_lines(employer, worker, amount)
+        work = Account(
+            f"{employer}:work_in_progress", employer, AccountKind.ASSET, "work_in_progress", True
+        )
+        wage = Account(f"{worker}:wage_income", worker, AccountKind.INCOME, "wage_income")
+        lines += [change(work, amount), change(wage, amount)]
+        self.ledger.post(
+            Transaction(tx_id, week, "labor_wages", "Salario anticipato T02", tuple(lines)),
+            new_accounts=tuple(a for a in (work, wage) if a.id not in self.ledger.accounts),
+        )
+
+    @money_context
     def transfer(self, tx_id, payer, payee, amount, *, week=0, reason="Trasferimento"):
         """Trasferimento esplicito senza consegna: spesa del pagante, reddito ricevente."""
         amount = positive_money(amount)
@@ -78,20 +92,38 @@ class Settlement:
         )
 
     @money_context
-    def purchase(self, tx_id, buyer, seller, product, quantity, unit_price, physical, *, week=0):
+    def purchase(
+        self,
+        tx_id,
+        buyer,
+        seller,
+        product,
+        quantity,
+        unit_price,
+        physical,
+        *,
+        week=0,
+        destination="inventory",
+    ):
         """Vendita al costo medio: consegna e pagamento nella stessa transazione."""
         if not np.isfinite(quantity) or quantity <= 0 or buyer == seller:
             raise SettlementError("invalid_quantity_or_party")
+        if destination not in {"inventory", "pending_capital"} or (
+            destination == "pending_capital" and product != 11
+        ):
+            raise SettlementError("invalid_delivery_destination")
         if quantity > physical.available(seller, product):
             raise SettlementError("insufficient_inventory")
         total = positive_money(positive_money(unit_price) * Decimal(str(quantity)))
         lines = self._payment_lines(buyer, seller, total)
         seller_stock = f"{seller}:inventory:{product}"
         buyer_stock = Account(
-            f"{buyer}:inventory:{product}",
+            f"{buyer}:inventory:{product}"
+            if destination == "inventory"
+            else f"{buyer}:pending_capital",
             buyer,
             AccountKind.ASSET,
-            "inventory",
+            destination,
             True,
             instrument_id=str(product),
         )
@@ -112,7 +144,9 @@ class Settlement:
         ]
         entries = (
             PhysicalEntry(tx_id, week, "settlement", "Vendita", seller, product, -quantity),
-            PhysicalEntry(tx_id, week, "settlement", "Acquisto", buyer, product, quantity),
+            PhysicalEntry(
+                tx_id, week, "settlement", "Acquisto", buyer, product, quantity, destination
+            ),
         )
         pending = physical.prepare(entries)
         additions = tuple(

@@ -12,10 +12,10 @@ def require(condition, message):
 
 
 @money_context
-def validate_state(sim):
+def validate_state(sim, *, full=True):
     ledger = sim.ledger
-    ledger.validate()
-    sim.physical.validate()
+    ledger.validate(full=full)
+    sim.physical.validate(full=full)
     entity_ids = {sim.government.id, sim.central_bank.id}
     for table in (sim.people, sim.firms, sim.banks):
         require(not entity_ids.intersection(table.ids.tolist()), "ID globali duplicati")
@@ -168,3 +168,27 @@ def validate_state(sim):
     for name in ("saving_propensity", "risk_propensity", "quality_propensity"):
         values = sim.people.column(name)
         require(((values >= 0) & (values <= 1)).all(), "Propensione fuori range")
+    for values in (sim.people.column("satisfaction"), sim.firms.column("reputation")):
+        require(((values >= 0) & (values <= 1)).all(), "Soddisfazione/reputazione fuori range")
+    employers = sim.people.column("employer_id")
+    for row, person in enumerate(sim.people.ids):
+        contract = sim.employment.get(int(person))
+        employer = employers[row]
+        require(
+            employer == (contract.employer_id if contract else -1), "Contratto/impiego incoerente"
+        )
+        if contract:
+            require(
+                contract.person_id == person and contract.last_paid_week == sim.week,
+                "Lavoro non pagato nella settimana",
+            )
+    for firm in sim.firms.ids:
+        pending = sim.physical.quantity(int(firm), 11, "pending_capital")
+        pending_account = f"{firm}:pending_capital"
+        pending_value = (
+            ledger.balance(pending_account) if pending_account in ledger.accounts else ZERO
+        )
+        require(pending > 0 or pending_value == ZERO, "Capitale pendente senza quantità")
+        require(pending == 0 or pending_account in ledger.accounts, "Capitale pendente senza costo")
+        work = f"{firm}:work_in_progress"
+        require(work not in ledger.accounts or ledger.balance(work) == ZERO, "Salari non allocati")

@@ -40,7 +40,8 @@ def test_opening_accounts_and_ownership(sim):
         assert h.owner_id in sim.people.id_to_row
         assert h.quantity == issue.total_shares
         assert sim.ledger.balance(h.asset_account) == sim.ledger.balance(issue.capital_account)
-    assert not hasattr(sim, "step")
+    with pytest.raises(ValueError, match="profilo incrementale"):
+        sim.step()
 
 
 def test_initial_costs_reconcile_with_physical_stocks(sim):

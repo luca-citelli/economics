@@ -154,7 +154,7 @@ class Ledger:
         return result
 
     @money_context
-    def validate(self):
+    def validate(self, *, full=True):
         if any(b["difference"] != ZERO for b in self.balance_sheets().values()):
             raise AccountingError("Invariante attività = passività + patrimonio violata")
         for aid, account in self._accounts.items():
@@ -162,6 +162,8 @@ class Ledger:
                 raise AccountingError("Saldo non quantizzato")
             if account.nonnegative and self.available(aid) < ZERO:
                 raise AccountingError(f"Saldo negativo: {aid}")
+        if not full:
+            return
         reconstructed = dict.fromkeys(self._accounts, ZERO)
         seen = set()
         for tx in self._journal:

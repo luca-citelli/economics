@@ -4,7 +4,7 @@ from types import MappingProxyType
 import numpy as np
 
 NO_ID = -1
-LAYOUT_VERSION = 1
+LAYOUT_VERSION = 2
 
 
 def readonly_copy(values, dtype=None):
@@ -60,6 +60,8 @@ class HouseholdState(ColumnTable):
         "quality_propensity": np.float64,
         "reservation_wage": np.float64,
         "expected_income": np.float64,
+        "unemployment_weeks": np.int64,
+        "deprivation_weeks": np.int64,
         "needs": np.float64,
         "satisfaction": np.float64,
     }
@@ -79,6 +81,10 @@ class FirmState(ColumnTable):
         "planned_workers": np.int64,
         "previous_sales": np.float64,
         "previous_orders": np.float64,
+        "previous_unfilled": np.float64,
+        "observed_unit_cost": np.float64,
+        "previous_vacancies": np.int64,
+        "previous_applications": np.int64,
     }
 
 

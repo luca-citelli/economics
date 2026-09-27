@@ -1,4 +1,4 @@
-"""Schema T01: parametri economici espliciti, profilo solo apertura."""
+"""Configurazione rigorosa dei profili di apertura e di economia reale T02."""
 
 from decimal import Decimal
 from pathlib import Path
@@ -106,13 +106,56 @@ class Features(StrictModel):
 
 
 class ExecutionConfig(StrictModel):
-    profile: Literal["initialization_only"]
+    profile: Literal["initialization_only", "real_economy"]
     phases: dict[str, bool]
 
     @model_validator(mode="after")
     def disabled(self):
-        if set(self.phases) != set(PHASES) or any(self.phases.values()):
-            raise ValueError("T01 richiede tutte le fasi economiche esplicite e disattivate")
+        active = set(REAL_PHASES) if self.profile == "real_economy" else set()
+        if set(self.phases) != set(PHASES) or {k for k, v in self.phases.items() if v} != active:
+            raise ValueError("Fasi esplicite: future disattivate, reali coerenti con il profilo")
+        return self
+
+
+REAL_PHASES = (
+    "planning_credit",
+    "labor_wages",
+    "extraction",
+    "resources",
+    "production",
+    "final_goods",
+    "investment",
+    "operating_close",
+)
+
+
+class RealEconomyConfig(StrictModel):
+    price_demand_response: Nonnegative
+    price_cost_response: Nonnegative
+    price_max_log_change: Fraction
+    price_floor: Price
+    target_markup: Nonnegative
+    cost_smoothing: Annotated[float, Field(gt=0, le=1)]
+    inventory_target_weeks: Nonnegative
+    input_target_weeks: Annotated[float, Field(ge=1)]
+    wage_response: Fraction
+    wage_max_log_change: Fraction
+    wage_floor: Price
+    contract_review_weeks: Annotated[int, Field(ge=1)]
+    reservation_primary_multiple: Positive
+    reservation_decay: Fraction
+    reservation_min_fraction: Fraction
+    reputation_smoothing: Fraction
+    deprivation_threshold: Fraction
+    investment_buffer_weeks: Nonnegative
+    investment_max_growth: Fraction
+    luxury_utility_scale: Positive
+    cpi_basket: dict[str, Positive]
+
+    @model_validator(mode="after")
+    def basket(self):
+        if set(self.cpi_basket) != set(PRODUCTS[:7]):
+            raise ValueError("Paniere CPI: esattamente i sette prodotti finali")
         return self
 
 
@@ -287,6 +330,7 @@ class Config(StrictModel):
     people: PeopleConfig
     opening: OpeningConfig
     catalog: Catalog
+    real_economy: RealEconomyConfig | None = None
 
     @property
     def firm_scale(self) -> float:
@@ -303,6 +347,23 @@ class Config(StrictModel):
         import math
 
         s = self.simulation
+        if self.execution.profile == "real_economy":
+            if self.real_economy is None:
+                raise ValueError("real_economy richiede parametri decisionali espliciti")
+            g, cb = self.government, self.central_bank
+            if (
+                g.labor_income_tax_rate
+                or g.profit_tax_rate
+                or g.weekly_budget_per_person
+                or cb.reserve_rate
+                or cb.policy_rate
+                or cb.emergency_rate
+                or cb.emergency_lending_enabled
+                or cb.primary_bond_purchases_enabled
+            ):
+                raise ValueError(
+                    "Profilo T02: fiscalità, interessi e facilities a zero/disabilitati"
+                )
         if s.initial_banks > s.initial_population:
             raise ValueError("Ogni banca deve avere almeno una persona cliente")
         labor = (
@@ -343,6 +404,7 @@ class ScenarioFile(StrictModel):
     banks: BankConfig
     people: PeopleConfig
     opening: OpeningConfig
+    real_economy: RealEconomyConfig | None = None
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
