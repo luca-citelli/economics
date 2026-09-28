@@ -25,6 +25,7 @@ class StepTransaction:
         )
         self.rng = sim.rng.states()
         self.attributes["employment"] = sim.employment.copy()
+        self.attributes["_loans"] = sim._loans.copy()
         self.attributes["_bonds"] = sim._bonds.copy()
         for name, value in sim.__dict__.items():
             if isinstance(value, np.ndarray):
@@ -76,6 +77,8 @@ class StepTransaction:
         from types import MappingProxyType
 
         sim.bonds = MappingProxyType(sim._bonds)
+        sim.loans = MappingProxyType(sim._loans)
+        sim.settlement.loans = sim._loans
         if hasattr(self, "finance"):
             (
                 sim.finance.policy,

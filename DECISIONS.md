@@ -84,6 +84,7 @@ Stato residuo: **I004 risolto per le decisioni T02**, credito T03 e calibrazione
 
 - **D032 — Prezzo e razionamento del credito.** Score annuale logistico batch, poi limiti esatti sequenziali su capitale, concentrazione, debt/income, copertura e liquidità. Una richiesta ha ID idempotente e una sola erogazione, anche parziale. I coefficienti/default sono nei contratti T03 e restano da calibrare in T08.
 - **D033 — Facilities e policy.** Policy attiva distinta dalla coda futura; corridoio validato a ogni modifica. Facility settimanali con haircut 5% sui bond e 35% sui prestiti performing, cap 50% degli asset e hold autorevole sul collateral. Il settlement T03 tenta il rifinanziamento prima del rifiuto; T02 resta invariato.
+- **D036 — Credito primario familiare e scelta del prestatore.** La richiesta familiare copre il costo dei tre bisogni primari meno deposito disponibile e reddito netto settimanale atteso; usa l'ID `primary:{week}:{person_id}` e non finanzia gli altri consumi. Si confrontano fino a K banche attive nell'ordine deterministico banca del cliente/ID. I prezzi T03 sono comuni a tutte le banche, quindi a parità di tasso prevalgono importo sostenibile, banca del cliente e ID minore. Un prestito cross-bank accredita il deposito presso la banca originaria e regola riserve per erogazione, interessi e rimborsi; l'importo iniziale è limitato alle riserve disponibili e i pagamenti futuri tentano il rifinanziamento ammesso. Limiti e prove in [contratti T03](docs/technical/t03_contracts.md).
 
 ## Decisioni implementative T04 — 28 settembre 2026
 

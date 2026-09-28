@@ -254,6 +254,22 @@ class Simulation:
             "private_credit": sum(
                 (self.ledger.balance(loan.asset_account) for loan in self.loans.values()), ZERO
             ),
+            "household_credit": sum(
+                (
+                    self.ledger.balance(loan.asset_account)
+                    for loan in self.loans.values()
+                    if loan.purpose == "primary_needs"
+                ),
+                ZERO,
+            ),
+            "business_credit": sum(
+                (
+                    self.ledger.balance(loan.asset_account)
+                    for loan in self.loans.values()
+                    if loan.purpose == "working_capital"
+                ),
+                ZERO,
+            ),
             "public_debt_face": sum(
                 (
                     bond.face_value

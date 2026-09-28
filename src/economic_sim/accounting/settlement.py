@@ -54,18 +54,23 @@ class Settlement:
             self._delta(target.liability, amount),
         ]
         if source.bank_id != target.bank_id:
-            a, b = self.reserves[source.bank_id], self.reserves[target.bank_id]
-            if self.ledger.available(a.asset) < amount:
-                shortfall = money(amount - self.ledger.available(a.asset))
-                if self.refinance is None or self.refinance(source.bank_id, shortfall) < shortfall:
-                    raise SettlementError("bank_settlement_failure")
-            lines += [
-                self._delta(a.asset, -amount),
-                self._delta(a.liability, -amount),
-                self._delta(b.asset, amount),
-                self._delta(b.liability, amount),
-            ]
+            lines += self._reserve_transfer_lines(source.bank_id, target.bank_id, amount)
         return lines
+
+    def _reserve_transfer_lines(self, source_bank, target_bank, amount):
+        if source_bank == target_bank:
+            return []
+        source, target = self.reserves[source_bank], self.reserves[target_bank]
+        if self.ledger.available(source.asset) < amount:
+            shortfall = money(amount - self.ledger.available(source.asset))
+            if self.refinance is None or self.refinance(source_bank, shortfall) < shortfall:
+                raise SettlementError("bank_settlement_failure")
+        return [
+            self._delta(source.asset, -amount),
+            self._delta(source.liability, -amount),
+            self._delta(target.asset, amount),
+            self._delta(target.liability, amount),
+        ]
 
     @money_context
     def pay_wage(self, tx_id, employer, worker, amount, *, week):
@@ -169,8 +174,8 @@ class Settlement:
         if loan_id in self.loans:
             raise SettlementError("duplicate_loan")
         deposit = self.deposits[borrower]
-        if deposit.bank_id != bank:
-            raise SettlementError("loan_requires_account_at_lender")
+        if bank not in self.reserves or deposit.bank_id not in self.reserves:
+            raise SettlementError("unknown_settlement_bank")
         asset = Account(
             f"{bank}:loan:{loan_id}", bank, AccountKind.ASSET, "loan", True, borrower, loan_id
         )
@@ -198,14 +203,27 @@ class Settlement:
             collateral_ids=(),
             status="performing",
         )
-        lines = (
+        lines = [
             change(asset, amount),
             change(debt, amount),
             self._delta(deposit.asset, amount),
             self._delta(deposit.liability, amount),
-        )
+        ]
+        if deposit.bank_id != bank:
+            lender_reserves = self.reserves[bank]
+            customer_reserves = self.reserves[deposit.bank_id]
+            if self.ledger.available(lender_reserves.asset) < amount:
+                raise SettlementError("insufficient_lender_reserves")
+            lines.extend(
+                (
+                    self._delta(lender_reserves.asset, -amount),
+                    self._delta(lender_reserves.liability, -amount),
+                    self._delta(customer_reserves.asset, amount),
+                    self._delta(customer_reserves.liability, amount),
+                )
+            )
         self.ledger.post(
-            Transaction(f"loan:{loan_id}", week, "credit", "Erogazione", lines),
+            Transaction(f"loan:{loan_id}", week, "credit", "Erogazione", tuple(lines)),
             new_accounts=(asset, debt),
         )
         self.loans[loan_id] = loan
@@ -222,12 +240,14 @@ class Settlement:
         deposit = self.deposits[loan.borrower_id]
         if self.ledger.available(deposit.asset) < amount:
             raise SettlementError("insufficient_customer_funds")
-        lines = (
+        lines = [
             self._delta(deposit.asset, -amount),
             self._delta(deposit.liability, -amount),
             self._delta(loan.asset_account, -amount),
             self._delta(loan.debt_account, -amount),
-        )
-        self.ledger.post(Transaction(tx_id, week, "credit", "Rimborso capitale", lines))
+        ]
+        if deposit.bank_id != loan.bank_id:
+            lines += self._reserve_transfer_lines(deposit.bank_id, loan.bank_id, amount)
+        self.ledger.post(Transaction(tx_id, week, "credit", "Rimborso capitale", tuple(lines)))
         if self.ledger.balance(loan.debt_account) == ZERO:
             self.loans[loan_id] = loan.model_copy(update={"status": "closed"})

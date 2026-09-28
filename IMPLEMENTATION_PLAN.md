@@ -1,15 +1,15 @@
 # Piano di implementazione D1
 
-Aggiornamento: 28 settembre 2026. **T04 completato e verificato**, fiscalità e debito pubblico sono integrati nel motore CLI. D1 resta da implementare nelle milestone successive.
+Aggiornamento: 28 settembre 2026. **T04 completato e verificato; follow-up T03 chiuso** con credito familiare per i bisogni primari e confronto dei finanziatori. D1 resta da implementare nelle milestone successive.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno; T04 chiuso.
+- Task corrente: nessuno; T04 e follow-up T03 chiusi.
 - Prossimo task: **T05**, da avviare su incarico.
-- Ultimo risultato: package 0.4.0, fiscalità, acquisti pubblici, asta bond, costo ammortizzato, scadenza e default sovrano.
+- Ultimo risultato: package 0.4.1; fiscalità/debito T04 e richieste familiari primarie con regolamento cross-bank T03.
 - Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T04.
-- Verifiche eseguite: suite completa, Ruff, build e run CLI T04 oltre la scadenza; [report T04](docs/reports/T04.md).
-- Blocchi software noti: nessuno. Il profilo incrementale mostra un forte calo dell'attività fino a zero consumi nella settimana 52; diagnosi e limiti nel report, nessuna calibrazione macro dichiarata.
+- Verifiche eseguite: 109 test, Ruff, run T03 integrato da 52 settimane con ledger validato; [report T03](docs/reports/T03.md) e [report T04](docs/reports/T04.md). `uv lock --check` e build 0.4.1 non verificati per accesso negato all'interprete/cache `uv`.
+- Problema economico aperto: nel run T03 l'occupazione scende a 14 e la soddisfazione primaria a zero alla settimana 52; il credito familiare viene attivato ma non riavvia la produzione. Calibrazione/diagnosi macro resta aperta per T05/T08.
 - Prima azione successiva: leggere T05 e i moduli collegati; preservare vincoli, controparti e test T01–T04.
 
 ## Stato delle milestone
@@ -18,7 +18,7 @@ Aggiornamento: 28 settembre 2026. **T04 completato e verificato**, fiscalità e 
 |---|---|---|---|---|
 | T01 | [Contratti e inizializzazione](tasks/T01.md) | Nessuna | DONE | [Report](docs/reports/T01.md): 52 test, Ruff, build, CLI e wheel verificati; `26986e7` |
 | T02 | [Economia reale](tasks/T02.md) | T01 | DONE | [Report](docs/reports/T02.md): 86 test, Ruff, build, 52 settimane/CSV e invarianti; `210063a` |
-| T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | DONE | [Report](docs/reports/T03.md) |
+| T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | DONE | Follow-up credito familiare/cross-bank; 109 test, run T03 52 settimane; [Report](docs/reports/T03.md) |
 | T04 | [Governo e debito](tasks/T04.md) | T03 | DONE | [Report](docs/reports/T04.md) |
 | T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | NOT_STARTED | Non ancora implementato |
 | T06 | [Runner e API](tasks/T06.md) | T01–T05 | NOT_STARTED | Non ancora implementato |

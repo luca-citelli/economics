@@ -6,6 +6,7 @@ from decimal import Decimal
 import numpy as np
 
 from economic_sim.accounting.ledger import Account, AccountKind, Transaction, change
+from economic_sim.accounting.settlement import SettlementError
 from economic_sim.contracts import CentralBankLoan, CreditDecision
 from economic_sim.money import ZERO, money, money_context
 
@@ -81,8 +82,9 @@ class Finance:
             + b.capital_premium
         )
 
+    @money_context
     def finance_plans(self):
-        """Finanzia una sola volta il fabbisogno salariale dei piani d'impresa."""
+        """Richiede credito per circolante e per i bisogni primari non coperti."""
         sim = self.sim
         wages = sim.firms.column("offered_wage") * sim.firms.column("planned_workers")
         prices = sim.firms.column("offered_price")
@@ -111,6 +113,45 @@ class Finance:
                 shortfall,
                 annual_income=expected_income,
                 purpose="working_capital",
+            )
+
+        people = sim.people
+        needs = people.column("needs")[:, :3]
+        reference = sim.reference_prices[:3]
+        expected_income = people.column("expected_income")
+        for row, person_id in enumerate(people.ids):
+            person = int(person_id)
+            deposit = sim.deposits[person]
+            primary_cost = money(
+                sum(
+                    (
+                        Decimal(str(float(quantity))) * Decimal(str(float(price)))
+                        for quantity, price in zip(needs[row], reference, strict=True)
+                    ),
+                    Decimal(0),
+                )
+            )
+            expected_weekly_income = money(str(max(0.0, float(expected_income[row]))))
+            contract = sim.employment.get(person)
+            if contract is not None:
+                expected_contract_income = contract.wage
+                if sim.config.execution.profile == "fiscal_economy":
+                    expected_contract_income *= Decimal(
+                        str(1 - sim.config.government.labor_income_tax_rate)
+                    )
+                expected_weekly_income = max(
+                    expected_weekly_income, money(expected_contract_income)
+                )
+            available = sim.ledger.available(deposit.asset)
+            shortfall = max(ZERO, primary_cost - available - expected_weekly_income)
+            if shortfall == ZERO:
+                continue
+            self.request_credit(
+                f"primary:{sim.week}:{person}",
+                person,
+                shortfall,
+                annual_income=money(expected_weekly_income * 52),
+                purpose="primary_needs",
             )
 
     def _reject(self, request_id, borrower, requested, reason):
@@ -147,11 +188,14 @@ class Finance:
             raise ValueError("Importo richiesto non positivo")
         sim, cfg = self.sim, self.sim.config.banks
         home = sim.deposits[borrower].bank_id
-        candidates = [home] + [int(x) for x in sim.banks.ids if int(x) != home]
+        active_banks = sim.banks.column("active")
+        candidates = [home] + [
+            int(x)
+            for x in sim.banks.ids
+            if int(x) != home and active_banks[sim.banks.id_to_row[int(x)]]
+        ]
+        candidates = [bank for bank in candidates if active_banks[sim.banks.id_to_row[bank]]]
         candidates = candidates[: cfg.max_banks_compared]
-        # Nel D1 l'erogazione richiede il deposito presso il prestatore: le altre offerte
-        # sono comparabili ma non regolabili senza un cambio banca fuori scope.
-        candidates = [b for b in candidates if b == home]
         debt = sum(
             (
                 sim.ledger.balance(x.debt_account)
@@ -167,42 +211,78 @@ class Finance:
             return self._reject(request_id, borrower, amount, "zero_income")
         if float(debt + amount) / income_f > cfg.max_debt_to_income:
             return self._reject(request_id, borrower, amount, "debt_to_income")
-        bank = candidates[0]
         sheets = sim.ledger.balance_sheets()
-        assets = sheets[bank]["assets"]
-        equity = sheets[bank]["equity"]
-        capital_capacity = money(max(ZERO, equity / Decimal(str(cfg.min_equity_ratio)) - assets))
-        exposure = sum(
-            (
-                sim.ledger.balance(x.asset_account)
-                for x in sim.loans.values()
-                if x.bank_id == bank and x.borrower_id == borrower
-            ),
-            ZERO,
-        )
-        concentration_capacity = money(
-            max(ZERO, assets * Decimal(str(cfg.max_borrower_share)) - exposure)
-        )
-        liquidity_capacity = money(
-            sim.ledger.available(sim.reserves[bank].asset)
-            / Decimal(str(max(cfg.expected_outflow_share, 1e-12)))
-        )
-        grant = min(amount, capital_capacity, concentration_capacity, liquidity_capacity)
-        if grant <= ZERO:
+        offers = []
+        rejected_reasons = []
+        for bank in candidates:
+            bank_row = sim.banks.id_to_row[bank]
+            if not sim.banks.column("active")[bank_row]:
+                continue
+            assets = sheets[bank]["assets"]
+            equity = sheets[bank]["equity"]
+            capital_capacity = money(
+                max(ZERO, equity / Decimal(str(cfg.min_equity_ratio)) - assets)
+            )
+            exposure = sum(
+                (
+                    sim.ledger.balance(x.asset_account)
+                    for x in sim.loans.values()
+                    if x.bank_id == bank and x.borrower_id == borrower
+                ),
+                ZERO,
+            )
+            concentration_capacity = money(
+                max(ZERO, assets * Decimal(str(cfg.max_borrower_share)) - exposure)
+            )
+            reserve_cash = sim.ledger.available(sim.reserves[bank].asset)
+            liquidity_capacity = money(
+                reserve_cash / Decimal(str(max(cfg.expected_outflow_share, 1e-12)))
+            )
+            if bank != home:
+                # Il prestito accredita il conto esistente del cliente: il regolamento
+                # interbancario trasferisce riserve e limita la quota erogabile.
+                liquidity_capacity = min(liquidity_capacity, reserve_cash)
+            capacities = {
+                "capital": capital_capacity,
+                "concentration": concentration_capacity,
+                "liquidity": liquidity_capacity,
+            }
+            grant = min(amount, *capacities.values())
+            if grant <= ZERO:
+                rejected_reasons.append(
+                    min(
+                        capacities,
+                        key=lambda name: (
+                            capacities[name],
+                            ("capital", "concentration", "liquidity").index(name),
+                        ),
+                    )
+                )
+                continue
+            interest = money(grant * weekly_rate(rate))
+            if (
+                interest > ZERO
+                and float(annual_income / Decimal(52)) / float(interest) < cfg.min_interest_coverage
+            ):
+                rejected_reasons.append("interest_coverage")
+                continue
+            binding = min(capacities, key=capacities.get)
+            reason = "approved" if grant == amount else binding
+            offers.append((rate, -grant, bank != home, bank, grant, reason))
+        if not offers:
             reason = (
-                "capital"
-                if capital_capacity <= ZERO
-                else "concentration"
-                if concentration_capacity <= ZERO
-                else "liquidity"
+                min(
+                    set(rejected_reasons),
+                    key=lambda item: (
+                        -rejected_reasons.count(item),
+                        ("capital", "concentration", "liquidity", "interest_coverage").index(item),
+                    ),
+                )
+                if rejected_reasons
+                else "no_active_lender"
             )
             return self._reject(request_id, borrower, amount, reason)
-        interest = money(grant * weekly_rate(rate))
-        if (
-            interest > ZERO
-            and float(annual_income / Decimal(52)) / float(interest) < cfg.min_interest_coverage
-        ):
-            return self._reject(request_id, borrower, amount, "interest_coverage")
+        _, _, _, bank, grant, limiting_reason = min(offers)
         loan = sim.settlement.originate_loan(
             request_id, borrower, bank, grant, rate, week=sim.week, purpose=purpose
         )
@@ -216,7 +296,7 @@ class Finance:
             granted=grant,
             annual_rate=rate,
             status=status,
-            reason="approved" if status == "approved" else "prudential_limit",
+            reason="approved" if status == "approved" else limiting_reason,
         )
         self.processed_requests[request_id] = decision
         return decision
@@ -454,6 +534,21 @@ class Finance:
                     }
                 )
                 continue
+            try:
+                reserve_lines = sim.settlement._reserve_transfer_lines(
+                    dep.bank_id, loan.bank_id, due
+                )
+            except SettlementError as exc:
+                if exc.code != "bank_settlement_failure":
+                    raise
+                sim._loans[loan_id] = loan.model_copy(
+                    update={
+                        "arrears": money(loan.arrears + due),
+                        "arrears_weeks": loan.arrears_weeks + 1,
+                        "status": "arrears",
+                    }
+                )
+                continue
             expense = Account(
                 f"{loan.borrower_id}:loan_interest",
                 loan.borrower_id,
@@ -463,18 +558,20 @@ class Finance:
             income = Account(
                 f"{loan.bank_id}:loan_interest", loan.bank_id, AccountKind.INCOME, "loan_interest"
             )
+            postings = [
+                change(sim.ledger.accounts[dep.asset], -due),
+                change(expense, due),
+                change(sim.ledger.accounts[dep.liability], -due),
+                change(income, due),
+                *reserve_lines,
+            ]
             sim.ledger.post(
                 Transaction(
                     f"interest:{sim.week}:{loan_id}",
                     sim.week,
                     "financial_service",
                     "Interesse prestito",
-                    (
-                        change(sim.ledger.accounts[dep.asset], -due),
-                        change(expense, due),
-                        change(sim.ledger.accounts[dep.liability], -due),
-                        change(income, due),
-                    ),
+                    tuple(postings),
                 ),
                 new_accounts=tuple(a for a in (expense, income) if a.id not in sim.ledger.accounts),
             )

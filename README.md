@@ -1,12 +1,12 @@
 # economics — simulatore economico agent-based
 
-Motore Python **0.4.0**, 28 settembre 2026, sulla documentazione modulare 3.2.
+Motore Python **0.4.1**, 28 settembre 2026, sulla documentazione modulare 3.2.
 
 L'utente interpreta la banca centrale; mercati e agenti formano prezzi, salari e rendimenti. Webapp locale: motore Python indipendente, FastAPI, React/TypeScript/Vite.
 
 ## Stato del progetto
 
-**T04 completato:** `configs/t04.yaml` integra trattenuta sul lavoro, imposta sui profitti maturata a fine settimana e pagata nella successiva, acquisti pubblici nello stesso matching, aste di bond zero coupon, accrescimento al costo ammortizzato, rimborso e default sovrano controllato. Non ci sono API HTTP o frontend; D1 non è completo. Prossimo task: **T05 — quote, investimenti e crisi**.
+**T04 completato e follow-up T03 verificato:** `configs/t04.yaml` integra trattenuta sul lavoro, imposta sui profitti maturata a fine settimana e pagata nella successiva, acquisti pubblici nello stesso matching, aste di bond zero coupon, accrescimento al costo ammortizzato, rimborso e default sovrano controllato. T03 ora include richieste di credito familiare per il divario dei bisogni primari e confronto fino a tre banche con settlement delle riserve. Non ci sono API HTTP o frontend; D1 non è completo. Prossimo task: **T05 — quote, investimenti e crisi**.
 
 Il profilo incrementale non è calibrato: nella prova di 52 settimane attività e occupazione calano fortemente, fino a zero consumi finali nell'ultima settimana. Le invarianti restano rispettate; risultati, diagnosi e limiti nel [report T02](docs/reports/T02.md).
 
@@ -41,7 +41,7 @@ uv run --locked ruff format --check src tests
 uv --native-tls build
 ```
 
-La build produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01; non è stata ripetuta per T04. Dettagli nei rispettivi report.
+La build produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01. La build del package 0.4.1 resta da verificare perché `uv` non può accedere all'interprete nel presente ambiente; dettagli nel [report T03](docs/reports/T03.md).
 
 API Python disponibile:
 

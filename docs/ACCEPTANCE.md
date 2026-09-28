@@ -8,12 +8,12 @@ Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice n
 |---|---|---|---|---|
 | A01 | Una economia, Governo/BC/valuta unici; popolazione e banche configurabili | T01 | `test_config.py`, `test_initialization.py`; [report](reports/T01.md) | Verificato T01 |
 | A02 | Ledger a contropartite, bilanci di apertura e registri proprietari coerenti | T01 | `test_opening_accounts_and_ownership`, costi fisici e diagnostica CLI; [report](reports/T01.md) | Verificato T01 |
-| A03 | Credito/depositi/riserve distinti, settlement atomico | T01/T03 | `test_accounting.py` e `test_finance.py`; [report T03](reports/T03.md) | Verificato T01/T03 |
+| A03 | Credito/depositi/riserve distinti, settlement atomico | T01/T03 | `test_accounting.py`, erogazione cross-bank e invariato stock aggregato di riserve; [report T03](reports/T03.md) | Verificato T01/T03 |
 | A04 | Bisogni primari/secondari/lusso e budget finiti | T02 | `test_real_kernels.py`, priorità/limiti fisici in `test_real_simulation.py`; [report T02](reports/T02.md) | Verificato T02 |
 | A05 | Lavoro, salari emergenti, occupazione unica | T02 | Matching a turni, salari unici, revisioni e settlement fallito in `test_real_simulation.py`; trattenuta T04 in `test_treasury.py` | Verificato T02/T04 |
 | A06 | Produzione vincolata da input, capitale e lavoro; giacimenti | T02 | Quattro fattori mancanti, energia pregressa, costo medio e invarianti su 52 settimane; [report T02](reports/T02.md) | Verificato T02 |
 | A07 | Mercati distinti e prezzi transati, offerti e domanda non evasa | T02 | `test_real_markets.py`, prezzi e CPI senza scambi; acquisti pubblici in `test_treasury.py` | Verificato T02/T04 |
-| A08 | Credito rolling e vincoli finanziari | T03 | `test_finance.py`; [report T03](reports/T03.md) | Verificato T03 |
+| A08 | Credito rolling per imprese e fabbisogni primari delle persone; confronto di massimo K banche e vincoli finanziari | T03 | `test_household_primary_shortfall_requests_rolling_credit`, `test_credit_compares_other_banks_and_settles_reserves`, rifiuti/limiti in `test_finance.py`; [report T03](reports/T03.md) | Verificato T03 follow-up |
 | A09 | Strumenti BC, interessi e facilities con collateral | T03 | `test_finance.py`; [report T03](reports/T03.md) | Verificato T03 |
 | A10 | Tasse, conto Tesoro, acquisti pubblici | T04 | `test_treasury.py`, run 53 settimane; [report T04](reports/T04.md) | Verificato T04 |
 | A11 | Asta bond e acquisti BC effettivi | T04 | Prezzo marginale, pareggi, budget e invenduto in `test_treasury.py`; [report T04](reports/T04.md) | Verificato T04 |
