@@ -108,6 +108,16 @@ def validate_state(sim, *, full=True):
             "Conti/contratto bond non collegati",
         )
     require(len([k for k in mirrors if k[0] == "bond"]) == len(sim.bonds), "Bond senza contratto")
+    if hasattr(sim, "treasury"):
+        for entity in [*map(int, sim.firms.ids), *map(int, sim.banks.ids)]:
+            due = sim.treasury.tax_due.get(entity, (0, ZERO))[1]
+            payable = f"{entity}:profit_tax_payable"
+            receivable = f"{sim.government.id}:tax_receivable:{entity}"
+            require(
+                (ledger.balance(payable) if payable in ledger.accounts else ZERO) == due
+                and (ledger.balance(receivable) if receivable in ledger.accounts else ZERO) == due,
+                "Debito e credito tributario non riconciliati",
+            )
     for holding in sim.share_holdings:
         require(
             holding.issue_id in sim.share_issues and holding.owner_id in sim.people.id_to_row,
@@ -179,7 +189,8 @@ def validate_state(sim, *, full=True):
         )
         if contract:
             require(
-                contract.person_id == person and contract.last_paid_week == sim.week,
+                contract.person_id == person
+                and (contract.last_paid_week == sim.week or sim.status == "TERMINATED"),
                 "Lavoro non pagato nella settimana",
             )
     for firm in sim.firms.ids:

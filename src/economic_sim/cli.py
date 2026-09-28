@@ -10,14 +10,14 @@ from economic_sim.config import load_config
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Simulatore economico — T02")
+    parser = argparse.ArgumentParser(description="Simulatore economico — T04")
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate", help="Valida scenario e catalogo")
     validate.add_argument("config", type=Path)
     init = subparsers.add_parser("init", help="Costruisce e verifica lo stato della settimana 0")
     init.add_argument("config", type=Path)
     init.add_argument("--output", type=Path, help="Riepilogo JSON con bilanci e registro fisico")
-    run = subparsers.add_parser("run", help="Esegue N settimane del profilo incrementale T02")
+    run = subparsers.add_parser("run", help="Esegue N settimane del profilo incrementale")
     run.add_argument("config", type=Path)
     run.add_argument("--steps", type=int, required=True)
     run.add_argument("--csv", type=Path, required=True)
@@ -34,6 +34,8 @@ def main(argv=None):
                 raise ValueError("--steps deve essere positivo")
             for _ in range(args.steps):
                 sim.step()
+                if sim.status == "TERMINATED":
+                    break
             sim.validate()
             sim.export_csv(args.csv)
             summary = {

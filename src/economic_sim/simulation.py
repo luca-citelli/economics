@@ -1,4 +1,5 @@
 from dataclasses import fields
+from decimal import Decimal
 from types import MappingProxyType
 from uuid import uuid4
 
@@ -20,8 +21,9 @@ from economic_sim.markets.capital import buy_capital, plan_investment
 from economic_sim.markets.labor import match_and_pay
 from economic_sim.markets.resources import buy_resources
 from economic_sim.metrics.weekly import collect, export_csv, firm_accounts, initialize_metrics
-from economic_sim.money import ZERO, money_context
+from economic_sim.money import ZERO, money, money_context
 from economic_sim.serialization import canonical_value, checksum
+from economic_sim.treasury import Treasury
 from economic_sim.validation import validate_state
 
 
@@ -42,13 +44,15 @@ class Simulation:
             setattr(sim, field.name, getattr(state, field.name))
         sim.deposits = MappingProxyType(sim.deposits)
         sim.reserves = MappingProxyType(sim.reserves)
-        sim.bonds = MappingProxyType(sim.bonds)
+        sim._bonds = dict(sim.bonds)
+        sim.bonds = MappingProxyType(sim._bonds)
         sim.share_issues = MappingProxyType(sim.share_issues)
         sim._loans = {}
         sim.loans = MappingProxyType(sim._loans)
         sim.settlement = Settlement(sim.ledger, sim.deposits, sim.reserves, sim._loans)
         sim.finance = Finance(sim)
-        if config.execution.profile == "monetary_economy":
+        sim.treasury = Treasury(sim)
+        if config.execution.profile in {"monetary_economy", "fiscal_economy"}:
             sim.settlement.refinance = sim.finance.refinance
         sim.products = sorted(config.catalog.products, key=lambda p: p.id)
         sim.product_by_name = {p.name: p for p in sim.products}
@@ -68,10 +72,14 @@ class Simulation:
 
     @money_context
     def step(self):
-        if self.config.execution.profile not in {"real_economy", "monetary_economy"}:
+        if self.config.execution.profile not in {
+            "real_economy",
+            "monetary_economy",
+            "fiscal_economy",
+        }:
             raise ValueError("step richiede un profilo incrementale")
         if self.status != "PAUSED":
-            raise ValueError("Simulazione in ERROR: ricreare il run prima di proseguire")
+            raise ValueError(f"Simulazione in {self.status}: non può avanzare")
         if self.config.execution.profile == "real_economy" and self.loans:
             raise ValueError("Il profilo T02 non esegue il servizio dei prestiti")
         undo = StepTransaction(self)
@@ -97,6 +105,8 @@ class Simulation:
                 ]
             )
             start_accounts = firm_accounts(self)
+            opening_profit = self.treasury.profit_snapshot()
+            self.treasury.open_week()
             labor, consumption, investment, depreciation, spoilage = {}, ZERO, ZERO, ZERO, ZERO
             for phase in PHASES:
                 if not self.config.execution.phases[phase]:
@@ -106,6 +116,13 @@ class Simulation:
                 self.phase_trace.append(phase)
                 if phase == "financial_service":
                     self.finance.service()
+                    if self.config.execution.profile == "fiscal_economy":
+                        self.treasury.service_taxes()
+                        self.treasury.accrue_bonds()
+                elif phase == "treasury":
+                    self.treasury.run()
+                    if self.status == "TERMINATED":
+                        break
                 elif phase == "planning_credit":
                     plan(self)
                     plan_investment(self)
@@ -123,17 +140,27 @@ class Simulation:
                     produce(self, extraction=False)
                 elif phase == "final_goods":
                     consumption = consume_households(self)
-                    self.events.append("noop:government_purchases:T02")
+                    if self.config.execution.profile != "fiscal_economy":
+                        self.events.append("noop:government_purchases:T02")
                 elif phase == "investment":
                     self.events.append("noop:primary_equity:T02")
                     investment = buy_capital(self)
                 elif phase == "operating_close":
                     depreciation, spoilage = operating_close(self)
-            metrics = collect(
-                self, start_accounts, consumption, investment, depreciation, spoilage, labor
+                elif phase == "distributions" and self.config.execution.profile == "fiscal_economy":
+                    self.treasury.accrue_profit_tax(opening_profit)
+            metrics = (
+                {
+                    "week": self.week,
+                    **self.monetary_metrics(),
+                }
+                if self.status == "TERMINATED"
+                else collect(
+                    self, start_accounts, consumption, investment, depreciation, spoilage, labor
+                )
             )
             self.validate(full=False)
-            if metrics["gdp_discrepancy"] != ZERO:
+            if self.status != "TERMINATED" and metrics["gdp_discrepancy"] != ZERO:
                 raise ValueError("PIL produzione/spesa non riconciliato")
             self.phase_trace.append("commit")
             self.weekly_metrics = metrics
@@ -187,6 +214,16 @@ class Simulation:
                 "active_policy": self.finance.policy,
                 "pending_policy": self.finance.pending_policy,
                 "bonds": dict(self.bonds),
+                "treasury_state": {
+                    "last_price": self.treasury.last_price,
+                    "expected_policy_rate": self.treasury.expected_policy_rate,
+                    "pending_cb_orders": self.treasury.pending_cb_orders,
+                    "tax_due": self.treasury.tax_due,
+                    "tax_arrears": self.treasury.tax_arrears,
+                    "default_arrears": self.treasury.default_arrears,
+                    "flows": self.treasury.flows,
+                    "opening_balance": self.treasury.opening_balance,
+                },
                 "share_issues": dict(self.share_issues),
                 "share_holdings": self.share_holdings,
                 "employment": self.employment,
@@ -217,7 +254,14 @@ class Simulation:
             "private_credit": sum(
                 (self.ledger.balance(loan.asset_account) for loan in self.loans.values()), ZERO
             ),
-            "public_debt_face": sum((bond.face_value for bond in self.bonds.values()), ZERO),
+            "public_debt_face": sum(
+                (
+                    bond.face_value
+                    for bond in self.bonds.values()
+                    if self.ledger.balance(bond.asset_account) > ZERO
+                ),
+                ZERO,
+            ),
             "public_debt_carrying": sum(
                 (self.ledger.balance(bond.liability_account) for bond in self.bonds.values()), ZERO
             ),
@@ -240,6 +284,29 @@ class Simulation:
                 reserve_rate=self.finance.policy.reserve_rate,
                 policy_rate=self.finance.policy.policy_rate,
                 emergency_rate=self.finance.policy.emergency_rate,
+            )
+        if hasattr(self, "treasury"):
+            metrics.update(self.treasury.flows)
+            metrics.update(
+                bond_auction_price=self.treasury.last_price,
+                bond_auction_yield=(
+                    money(Decimal(1) / self.treasury.last_price - 1)
+                    if self.treasury.last_price
+                    else None
+                ),
+                expected_bond_policy_rate=self.treasury.expected_policy_rate,
+                sovereign_arrears=self.treasury.default_arrears,
+                profit_tax_arrears=sum(self.treasury.tax_arrears.values(), ZERO),
+                fiscal_deficit=(
+                    self.treasury.flows["spending"]
+                    + self.treasury.flows["bond_interest"]
+                    - self.treasury.flows["labor_tax"]
+                    - self.treasury.flows["profit_tax_accrued"]
+                ),
+                treasury_cash_change=(
+                    self.ledger.balance(f"{self.government.id}:treasury")
+                    - self.treasury.opening_balance
+                ),
             )
         return metrics
 
@@ -282,7 +349,7 @@ class Simulation:
                 "phase_trace": self.phase_trace,
                 "limitations": [
                     "Profilo: " + self.config.execution.profile,
-                    "Credito/fisco/debito dinamico, crisi e dividendi non implementati",
+                    "Crisi di imprese/banche, quote primarie e dividendi non implementati",
                     "Calibrazione proposta; non è il deliverable D1",
                 ],
             }

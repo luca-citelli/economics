@@ -1,16 +1,16 @@
 # Piano di implementazione D1
 
-Aggiornamento: 28 settembre 2026. **T03 completato e verificato**, credito e politica monetaria sono integrati nel motore CLI. D1 resta da implementare nelle milestone successive.
+Aggiornamento: 28 settembre 2026. **T04 completato e verificato**, fiscalità e debito pubblico sono integrati nel motore CLI. D1 resta da implementare nelle milestone successive.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno; T03 chiuso.
-- Prossimo task: **T04**, da avviare su incarico.
-- Ultimo risultato: package 0.3.0, credito rolling, interessi, policy programmate, facilities garantite e metriche/CSV.
-- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T03.
-- Verifiche eseguite: 92 test, Ruff, build e smoke CLI T03 da due settimane; [report T03](docs/reports/T03.md).
+- Task corrente: nessuno; T04 chiuso.
+- Prossimo task: **T05**, da avviare su incarico.
+- Ultimo risultato: package 0.4.0, fiscalità, acquisti pubblici, asta bond, costo ammortizzato, scadenza e default sovrano.
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T04.
+- Verifiche eseguite: suite completa, Ruff, build e run CLI T04 oltre la scadenza; [report T04](docs/reports/T04.md).
 - Blocchi software noti: nessuno. Il profilo incrementale mostra un forte calo dell'attività fino a zero consumi nella settimana 52; diagnosi e limiti nel report, nessuna calibrazione macro dichiarata.
-- Prima azione successiva: leggere T04 e i moduli collegati; preservare vincoli, controparti e test T01–T03.
+- Prima azione successiva: leggere T05 e i moduli collegati; preservare vincoli, controparti e test T01–T04.
 
 ## Stato delle milestone
 
@@ -19,7 +19,7 @@ Aggiornamento: 28 settembre 2026. **T03 completato e verificato**, credito e pol
 | T01 | [Contratti e inizializzazione](tasks/T01.md) | Nessuna | DONE | [Report](docs/reports/T01.md): 52 test, Ruff, build, CLI e wheel verificati; `26986e7` |
 | T02 | [Economia reale](tasks/T02.md) | T01 | DONE | [Report](docs/reports/T02.md): 86 test, Ruff, build, 52 settimane/CSV e invarianti; `210063a` |
 | T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | DONE | [Report](docs/reports/T03.md) |
-| T04 | [Governo e debito](tasks/T04.md) | T03 | NOT_STARTED | Non ancora implementato |
+| T04 | [Governo e debito](tasks/T04.md) | T03 | DONE | [Report](docs/reports/T04.md) |
 | T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | NOT_STARTED | Non ancora implementato |
 | T06 | [Runner e API](tasks/T06.md) | T01–T05 | NOT_STARTED | Non ancora implementato |
 | T07 | [Frontend interattivo](tasks/T07.md) | T06 | NOT_STARTED | Non ancora implementato |

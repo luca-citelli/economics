@@ -175,7 +175,7 @@ class Snapshot(StrictModel):
     run_id: Identifier
     week: Week
     state_version: Annotated[int, Field(ge=0)]
-    status: Literal["PAUSED", "ERROR"]
+    status: Literal["PAUSED", "ERROR", "TERMINATED"]
     checksum: Identifier
     metrics: dict[str, Metric]
     markets: tuple[MarketResult, ...]

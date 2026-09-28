@@ -104,17 +104,24 @@ def match_and_pay(sim):
     employers = np.full(len(people.ids), NO_ID, dtype=np.int64)
     paid = np.zeros(len(firms.ids), dtype=np.int64)
     wage_bill = ZERO
+    net_wage_bill = ZERO
     for person, contract in sorted(list(contracts.items())):
         if contract.last_paid_week >= sim.week:
             raise ValueError("Salario già pagato nella settimana")
         try:
-            sim.settlement.pay_wage(
-                f"w{sim.week}:wage:{person}",
-                contract.employer_id,
-                person,
-                contract.wage,
-                week=sim.week,
-            )
+            if sim.config.execution.profile == "fiscal_economy":
+                net = sim.treasury.pay_wage(
+                    f"w{sim.week}:wage:{person}", contract.employer_id, person, contract.wage
+                )
+            else:
+                sim.settlement.pay_wage(
+                    f"w{sim.week}:wage:{person}",
+                    contract.employer_id,
+                    person,
+                    contract.wage,
+                    week=sim.week,
+                )
+                net = contract.wage
         except SettlementError as exc:
             if exc.code not in {"bank_settlement_failure", "insufficient_customer_funds"}:
                 raise
@@ -123,10 +130,11 @@ def match_and_pay(sim):
             continue
         contracts[person] = replace(contract, last_paid_week=sim.week)
         row = people.id_to_row[person]
-        income[row] = float(contract.wage)
+        income[row] = float(net)
         employers[row] = contract.employer_id
         paid[firms.id_to_row[contract.employer_id]] += 1
         wage_bill += contract.wage
+        net_wage_bill += net
     people.replace_column("employer_id", employers)
     people.replace_column("expected_income", 0.5 * people.column("expected_income") + 0.5 * income)
     people.replace_column("unemployment_weeks", np.where(employers == NO_ID, unemployment + 1, 0))
@@ -135,7 +143,7 @@ def match_and_pay(sim):
     sim.paid_workers, sim.weekly_income = paid, income
     return {
         "wages_gross": wage_bill,
-        "wages_net": wage_bill,
+        "wages_net": net_wage_bill,
         "offered_wage_mean": float(sum(offered, ZERO) / len(offered)),
         "new_contract_wage_mean": float(sum(new_wages, ZERO) / len(new_wages))
         if new_wages

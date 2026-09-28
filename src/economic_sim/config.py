@@ -106,7 +106,7 @@ class Features(StrictModel):
 
 
 class ExecutionConfig(StrictModel):
-    profile: Literal["initialization_only", "real_economy", "monetary_economy"]
+    profile: Literal["initialization_only", "real_economy", "monetary_economy", "fiscal_economy"]
     phases: dict[str, bool]
 
     @model_validator(mode="after")
@@ -116,6 +116,8 @@ class ExecutionConfig(StrictModel):
             if self.profile == "real_economy"
             else set(MONETARY_PHASES)
             if self.profile == "monetary_economy"
+            else set(FISCAL_PHASES)
+            if self.profile == "fiscal_economy"
             else set()
         )
         if set(self.phases) != set(PHASES) or {k for k, v in self.phases.items() if v} != active:
@@ -134,6 +136,7 @@ REAL_PHASES = (
     "operating_close",
 )
 MONETARY_PHASES = ("financial_service", *REAL_PHASES)
+FISCAL_PHASES = ("financial_service", "treasury", *REAL_PHASES, "distributions")
 
 
 class RealEconomyConfig(StrictModel):
@@ -194,6 +197,9 @@ class GovernmentConfig(StrictModel):
     spending_weights: dict[str, Fraction]
     initial_bond_reference_price: Price
     max_bond_yield: Rate
+    cash_buffer_weeks: Nonnegative = 1.0
+    household_bond_budget_share: Fraction = 0.05
+    bank_bond_budget_share: Fraction = 0.05
 
     @model_validator(mode="after")
     def weights(self):
@@ -386,7 +392,7 @@ class Config(StrictModel):
                 raise ValueError(
                     "Profilo T02: fiscalità, interessi e facilities a zero/disabilitati"
                 )
-        elif self.execution.profile == "monetary_economy":
+        elif self.execution.profile in {"monetary_economy", "fiscal_economy"}:
             if self.real_economy is None:
                 raise ValueError("monetary_economy richiede i parametri dell'economia reale")
         if s.initial_banks > s.initial_population:

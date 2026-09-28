@@ -58,6 +58,7 @@ def collect(sim, start_accounts, consumption, investment, depreciation, spoilage
         consumption=consumption,
         investment=investment,
         flow_saving=labor["wages_net"] - consumption,
+        government_consumption=sim.treasury.flows["spending"],
         depreciation=depreciation,
         spoilage=spoilage,
     )
@@ -131,7 +132,10 @@ def collect(sim, start_accounts, consumption, investment, depreciation, spoilage
         revenue - initial_revenue + output_cost - (cogs - initial_cogs) - inputs
     )
     result["gdp_expenditure"] = (
-        consumption + investment + result["inventory_change_excluding_losses"]
+        consumption
+        + sim.treasury.flows["spending"]
+        + investment
+        + result["inventory_change_excluding_losses"]
     )
     result["gdp_discrepancy"] = result["gdp_production"] - result["gdp_expenditure"]
     result["gdp_real_base_prices"] = float(
@@ -155,6 +159,7 @@ def export_csv(sim, path):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as target:
-        writer = csv.DictWriter(target, fieldnames=list(sim.history[0]))
+        fieldnames = list(dict.fromkeys(key for row in sim.history for key in row))
+        writer = csv.DictWriter(target, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(sim.history)

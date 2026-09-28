@@ -25,6 +25,7 @@ class StepTransaction:
         )
         self.rng = sim.rng.states()
         self.attributes["employment"] = sim.employment.copy()
+        self.attributes["_bonds"] = sim._bonds.copy()
         for name, value in sim.__dict__.items():
             if isinstance(value, np.ndarray):
                 self.attributes[name] = value.copy()
@@ -38,6 +39,18 @@ class StepTransaction:
                 sim.finance.processed_requests.copy(),
                 sim.finance.rejections.copy(),
                 sim.finance.flows.copy(),
+            )
+        if hasattr(sim, "treasury"):
+            self.treasury = (
+                sim.treasury.last_price,
+                sim.treasury.expected_policy_rate,
+                sim.treasury.pending_cb_orders.copy(),
+                sim.treasury.tax_due.copy(),
+                sim.treasury.tax_arrears.copy(),
+                sim.treasury.default_arrears,
+                sim.treasury.flows.copy(),
+                sim.treasury.opening_balance,
+                getattr(sim.treasury, "spending_budget", None),
             )
 
     def rollback(self):
@@ -60,6 +73,9 @@ class StepTransaction:
         del sim.cpi_history[self.cpi_length :]
         sim.__dict__.clear()
         sim.__dict__.update(self.attributes)
+        from types import MappingProxyType
+
+        sim.bonds = MappingProxyType(sim._bonds)
         if hasattr(self, "finance"):
             (
                 sim.finance.policy,
@@ -69,3 +85,19 @@ class StepTransaction:
                 sim.finance.rejections,
                 sim.finance.flows,
             ) = self.finance
+        if hasattr(self, "treasury"):
+            (
+                sim.treasury.last_price,
+                sim.treasury.expected_policy_rate,
+                sim.treasury.pending_cb_orders,
+                sim.treasury.tax_due,
+                sim.treasury.tax_arrears,
+                sim.treasury.default_arrears,
+                sim.treasury.flows,
+                sim.treasury.opening_balance,
+                spending_budget,
+            ) = self.treasury
+            if spending_budget is None:
+                sim.treasury.__dict__.pop("spending_budget", None)
+            else:
+                sim.treasury.spending_budget = spending_budget

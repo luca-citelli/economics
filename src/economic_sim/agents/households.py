@@ -1,5 +1,7 @@
 """Budget distinti per bisogni, risparmio desiderato e prelievo dal patrimonio."""
 
+from decimal import Decimal
+
 import numpy as np
 
 from economic_sim.agents.decisions import consumption_budgets, satisfaction
@@ -38,6 +40,9 @@ def consume_households(sim):
     preferences = dict(zip(map(int, people.ids), people.column("quality_propensity"), strict=True))
     consumed = np.zeros((len(people.ids), 7))
     cost = ZERO
+    public_remaining = (
+        sim.treasury.spending_budget if sim.config.execution.profile == "fiscal_economy" else ZERO
+    )
     for col in range(7):
         orders = []
         product_prices = sim.firms.column("offered_price")[
@@ -59,11 +64,33 @@ def consume_households(sim):
                     week=sim.week,
                 )
             )
+        if col < 6 and public_remaining:
+            intended = money(
+                sim.treasury.spending_budget
+                * Decimal(
+                    str(sim.config.government.spending_weights.get(sim.products[col].name, 0))
+                )
+            )
+            public_budget = min(public_remaining, intended)
+            public_remaining -= public_budget
+            if public_budget:
+                price = money(str(float(product_prices.min())))
+                orders.append(
+                    Order(
+                        buyer_id=sim.government.id,
+                        product_id=col + 1,
+                        quantity=float(public_budget / price),
+                        budget=public_budget,
+                        max_price=money(str(float(product_prices.max()))),
+                        week=sim.week,
+                    )
+                )
         result = clear_market(sim, col + 1, orders, quality_preferences=preferences)
         sim.market_results.append(result)
         for trade in result.trades:
-            consumed[people.id_to_row[trade.buyer_id], col] += trade.quantity
-            cost += trade.total_cost
+            if trade.buyer_id != sim.government.id:
+                consumed[people.id_to_row[trade.buyer_id], col] += trade.quantity
+                cost += trade.total_cost
         for person_id in people.ids:
             person = int(person_id)
             quantity = sim.physical.quantity(person, col + 1)

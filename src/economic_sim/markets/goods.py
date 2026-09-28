@@ -62,7 +62,12 @@ def clear_market(
         for order in orders:
             if order.budget:
                 hold = f"{prefix}:hold:{order.buyer_id}"
-                sim.ledger.reserve(hold, sim.deposits[order.buyer_id].asset, order.budget)
+                account = (
+                    f"{sim.government.id}:treasury"
+                    if order.buyer_id == sim.government.id
+                    else sim.deposits[order.buyer_id].asset
+                )
+                sim.ledger.reserve(hold, account, order.budget)
                 holds.append(hold)
         for i in sim.rng[stream].permutation(len(orders)):
             order = orders[int(i)]
@@ -106,17 +111,22 @@ def clear_market(
                 total = money(offer.price * Decimal(str(quantity)))
                 tx_id = f"{prefix}:trade:{len(trades)}"
                 try:
-                    sim.settlement.purchase(
-                        tx_id,
-                        buyer,
-                        offer.seller_id,
-                        product,
-                        quantity,
-                        offer.price,
-                        sim.physical,
-                        week=sim.week,
-                        destination=destination,
-                    )
+                    if buyer == sim.government.id:
+                        sim.treasury.purchase(
+                            tx_id, offer.seller_id, product, quantity, offer.price
+                        )
+                    else:
+                        sim.settlement.purchase(
+                            tx_id,
+                            buyer,
+                            offer.seller_id,
+                            product,
+                            quantity,
+                            offer.price,
+                            sim.physical,
+                            week=sim.week,
+                            destination=destination,
+                        )
                 except SettlementError as exc:
                     if exc.code not in {"bank_settlement_failure", "insufficient_customer_funds"}:
                         raise
