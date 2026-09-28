@@ -1,0 +1,113 @@
+# Profilo T03: economia reale con servizio finanziario e politica monetaria.
+schema_version: 1
+products_file: products.yaml
+simulation:
+  seed: 42
+  step_unit: week
+  weeks_per_year: 52
+  initial_population: 1000
+  initial_banks: 3
+  companies_per_product: 3
+  country_count: 1
+  government_count: 1
+  central_bank_count: 1
+  currency: UM
+runtime:
+  start_paused: true
+  speed_presets:
+  - 0.5
+  - 1.0
+  - 2.0
+  - 5.0
+  - 10.0
+  default_steps_per_second: 1.0
+  max_ui_updates_per_second: 5.0
+  pause_on_all_clients_disconnected: true
+features:
+  demographics: false
+  company_entry: false
+  primary_equity_market: true
+  secondary_securities_markets: false
+  monetary_regime: fiat
+execution:
+  profile: monetary_economy
+  phases:
+    financial_service: true
+    treasury: false
+    planning_credit: true
+    labor_wages: true
+    extraction: true
+    resources: true
+    production: true
+    final_goods: true
+    investment: true
+    operating_close: true
+    crisis: false
+    distributions: false
+central_bank:
+  reserve_rate: 0.01
+  policy_rate: 0.02
+  emergency_rate: 0.04
+  emergency_lending_enabled: true
+  primary_bond_purchases_enabled: false
+  weekly_bond_purchase_budget: '0'
+  bond_max_price: '1'
+government:
+  labor_income_tax_rate: 0.0
+  profit_tax_rate: 0.0
+  bond_maturity_weeks: 52
+  fiscal_policy_mode: fixed_nominal_budget
+  initial_treasury_per_person: '100'
+  weekly_budget_per_person: '0'
+  spending_weights:
+    food: 0.5
+    household_energy: 0.3
+    mobility: 0.2
+  initial_bond_reference_price: '1'
+  max_bond_yield: 0.25
+banks:
+  min_equity_ratio: 0.08
+  deposit_rate_pass_through: 0.5
+  initial_equity_per_person: '150'
+  resolution_mode: deposit_conversion
+  deposit_insurance_enabled: false
+people:
+  initial_deposit: '1000'
+  deposit_spread: 0.25
+  adult_age_min_years: 18
+  adult_age_max_years: 65
+  reservation_wage: '100'
+  wage_spread: 0.2
+  propensity_min: 0.1
+  propensity_max: 0.9
+  liquidity_buffer_weeks: 2.0
+  wealth_drawdown_rate: 0.05
+opening:
+  reference_population: 1000
+  reference_companies_per_product: 3
+  firm_deposit: '10000'
+  offered_wage: '120'
+  shares_per_issuer: '1000'
+  initial_reputation: 0.5
+real_economy:
+  price_demand_response: 0.04
+  price_cost_response: 0.02
+  price_max_log_change: 0.08
+  price_floor: '0.01'
+  target_markup: 0.15
+  cost_smoothing: 0.25
+  inventory_target_weeks: 0.5
+  input_target_weeks: 1.5
+  wage_response: 0.03
+  wage_max_log_change: 0.05
+  wage_floor: '1'
+  contract_review_weeks: 13
+  reservation_primary_multiple: 2.0
+  reservation_decay: 0.02
+  reservation_min_fraction: 0.5
+  reputation_smoothing: 0.2
+  deprivation_threshold: 0.9
+  investment_buffer_weeks: 2.0
+  investment_max_growth: 0.05
+  luxury_utility_scale: 1.0
+  cpi_basket: {food: 10.0, household_energy: 5.0, mobility: 3.0, clothing: 0.2, entertainment: 0.5, travel: 0.1, luxury: 0.01}

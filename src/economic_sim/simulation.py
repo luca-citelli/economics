@@ -14,6 +14,7 @@ from economic_sim.agents.production import operating_close, produce
 from economic_sim.agents.state import LAYOUT_VERSION, AgentView, readonly_copy
 from economic_sim.config import PHASES, Config
 from economic_sim.contracts import Snapshot
+from economic_sim.finance import Finance
 from economic_sim.initialization import initialize
 from economic_sim.markets.capital import buy_capital, plan_investment
 from economic_sim.markets.labor import match_and_pay
@@ -46,6 +47,9 @@ class Simulation:
         sim._loans = {}
         sim.loans = MappingProxyType(sim._loans)
         sim.settlement = Settlement(sim.ledger, sim.deposits, sim.reserves, sim._loans)
+        sim.finance = Finance(sim)
+        if config.execution.profile == "monetary_economy":
+            sim.settlement.refinance = sim.finance.refinance
         sim.products = sorted(config.catalog.products, key=lambda p: p.id)
         sim.product_by_name = {p.name: p for p in sim.products}
         sim.inventory = InventoryAccounting(sim)
@@ -64,11 +68,11 @@ class Simulation:
 
     @money_context
     def step(self):
-        if self.config.execution.profile != "real_economy":
-            raise ValueError("step richiede il profilo incrementale real_economy")
+        if self.config.execution.profile not in {"real_economy", "monetary_economy"}:
+            raise ValueError("step richiede un profilo incrementale")
         if self.status != "PAUSED":
             raise ValueError("Simulazione in ERROR: ricreare il run prima di proseguire")
-        if self.loans:
+        if self.config.execution.profile == "real_economy" and self.loans:
             raise ValueError("Il profilo T02 non esegue il servizio dei prestiti")
         undo = StepTransaction(self)
         try:
@@ -100,10 +104,15 @@ class Simulation:
                     self.events.append(f"noop:{phase}:T02")
                     continue
                 self.phase_trace.append(phase)
-                if phase == "planning_credit":
+                if phase == "financial_service":
+                    self.finance.service()
+                elif phase == "planning_credit":
                     plan(self)
                     plan_investment(self)
-                    self.events.append("noop:dynamic_credit:T02")
+                    if self.config.execution.profile == "real_economy":
+                        self.events.append("noop:dynamic_credit:T02")
+                    else:
+                        self.finance.finance_plans()
                 elif phase == "labor_wages":
                     labor = match_and_pay(self)
                 elif phase == "extraction":
@@ -174,6 +183,9 @@ class Simulation:
                 "deposits": dict(self.deposits),
                 "reserves": dict(self.reserves),
                 "loans": dict(self.loans),
+                "central_bank_loans": self.finance.cb_loans,
+                "active_policy": self.finance.policy,
+                "pending_policy": self.finance.pending_policy,
                 "bonds": dict(self.bonds),
                 "share_issues": dict(self.share_issues),
                 "share_holdings": self.share_holdings,
@@ -191,7 +203,7 @@ class Simulation:
 
     @money_context
     def monetary_metrics(self):
-        return {
+        metrics = {
             "private_deposits": sum(
                 (self.ledger.balance(a.asset) for a in self.deposits.values()), ZERO
             ),
@@ -210,6 +222,26 @@ class Simulation:
                 (self.ledger.balance(bond.liability_account) for bond in self.bonds.values()), ZERO
             ),
         }
+        if hasattr(self, "finance"):
+            metrics.update(
+                central_bank_credit=sum(
+                    (x.principal for x in self.finance.cb_loans.values() if x.status != "closed"),
+                    ZERO,
+                ),
+                pledged_collateral=sum(
+                    (
+                        x.collateral_amount
+                        for x in self.finance.cb_loans.values()
+                        if x.status != "closed"
+                    ),
+                    ZERO,
+                ),
+                credit_rejections=sum(self.finance.rejections.values()),
+                reserve_rate=self.finance.policy.reserve_rate,
+                policy_rate=self.finance.policy.policy_rate,
+                emergency_rate=self.finance.policy.emergency_rate,
+            )
+        return metrics
 
     def metrics(self):
         return self.weekly_metrics.copy() if self.weekly_metrics else self.monetary_metrics()

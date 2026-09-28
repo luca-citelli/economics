@@ -106,12 +106,18 @@ class Features(StrictModel):
 
 
 class ExecutionConfig(StrictModel):
-    profile: Literal["initialization_only", "real_economy"]
+    profile: Literal["initialization_only", "real_economy", "monetary_economy"]
     phases: dict[str, bool]
 
     @model_validator(mode="after")
     def disabled(self):
-        active = set(REAL_PHASES) if self.profile == "real_economy" else set()
+        active = (
+            set(REAL_PHASES)
+            if self.profile == "real_economy"
+            else set(MONETARY_PHASES)
+            if self.profile == "monetary_economy"
+            else set()
+        )
         if set(self.phases) != set(PHASES) or {k for k, v in self.phases.items() if v} != active:
             raise ValueError("Fasi esplicite: future disattivate, reali coerenti con il profilo")
         return self
@@ -127,6 +133,7 @@ REAL_PHASES = (
     "investment",
     "operating_close",
 )
+MONETARY_PHASES = ("financial_service", *REAL_PHASES)
 
 
 class RealEconomyConfig(StrictModel):
@@ -203,6 +210,21 @@ class BankConfig(StrictModel):
     initial_equity_per_person: Price
     resolution_mode: Literal["deposit_conversion"]
     deposit_insurance_enabled: Literal[False]
+    funding_spread: Nonnegative = 0.005
+    operating_spread: Nonnegative = 0.01
+    loss_given_default: Fraction = 0.5
+    capital_premium: Nonnegative = 0.005
+    max_borrower_share: Annotated[float, Field(gt=0, le=1)] = 0.25
+    max_debt_to_income: Positive = 4.0
+    min_interest_coverage: Nonnegative = 1.25
+    expected_outflow_share: Fraction = 0.1
+    max_banks_compared: Annotated[int, Field(ge=1)] = 3
+    review_weeks: Annotated[int, Field(ge=1)] = 1
+    recall_notice_weeks: Annotated[int, Field(ge=1)] = 4
+    ordinary_haircut: Fraction = 0.05
+    emergency_haircut: Fraction = 0.35
+    facility_cap_share: Fraction = 0.5
+    arrears_grace_weeks: Annotated[int, Field(ge=1)] = 4
 
 
 class PeopleConfig(StrictModel):
@@ -364,6 +386,9 @@ class Config(StrictModel):
                 raise ValueError(
                     "Profilo T02: fiscalità, interessi e facilities a zero/disabilitati"
                 )
+        elif self.execution.profile == "monetary_economy":
+            if self.real_economy is None:
+                raise ValueError("monetary_economy richiede i parametri dell'economia reale")
         if s.initial_banks > s.initial_population:
             raise ValueError("Ogni banca deve avere almeno una persona cliente")
         labor = (

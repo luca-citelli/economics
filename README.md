@@ -1,12 +1,12 @@
 # economics — simulatore economico agent-based
 
-Motore Python **0.2.0**, 27 settembre 2026, sulla documentazione modulare 3.2.
+Motore Python **0.3.0**, 28 settembre 2026, sulla documentazione modulare 3.2.
 
 L'utente interpreta la banca centrale; mercati e agenti formano prezzi, salari e rendimenti. Webapp locale: motore Python indipendente, FastAPI, React/TypeScript/Vite.
 
 ## Stato del progetto
 
-**T02 completato:** ciclo settimanale reale da CLI, lavoro e salari, estrazione/produzione, mercati per prodotto, consumo, inventari al costo e investimenti con installazione da t+1. Ledger Decimal e stato NumPy di T01 riutilizzati; step con rollback e metriche/CSV reali. Verificati 86 test e 52 settimane con 1.000 persone. Non ci sono API HTTP o frontend; D1 non è completo. Prossimo task: **T03 — Banche e politica monetaria**.
+**T03 completato:** al ciclo reale si aggiungono credito rolling, scoring batch, limiti prudenziali, interessi, corridoio e programmazione dei tassi, facilities garantite e metriche monetarie separate. Il profilo `configs/t03.yaml` è eseguibile dalla CLI. Non ci sono API HTTP o frontend; D1 non è completo. Prossimo task: **T04 — Governo e debito**.
 
 Il profilo incrementale non è calibrato: nella prova di 52 settimane attività e occupazione calano fortemente, fino a zero consumi finali nell'ultima settimana. Le invarianti restano rispettate; risultati, diagnosi e limiti nel [report T02](docs/reports/T02.md).
 
@@ -20,6 +20,8 @@ uv run --locked economic-sim validate configs/base.yaml
 uv run --locked economic-sim init configs/base.yaml --output runs/week0.json
 uv run --locked economic-sim validate configs/t02.yaml
 uv run --locked economic-sim run configs/t02.yaml --steps 52 --csv runs/t02-52.csv --output runs/t02-52.json
+uv run --locked economic-sim validate configs/t03.yaml
+uv run --locked economic-sim run configs/t03.yaml --steps 52 --csv runs/t03-52.csv --output runs/t03-52.json
 uv run --locked pytest -q
 ```
 
@@ -27,7 +29,7 @@ uv run --locked pytest -q
 
 `validate` controlla scenario e catalogo; `init` costruisce lo stato reale, verifica le invarianti e salva il riepilogo con aggregati, bilanci, scritture, proprietà e inventari. Gli importi JSON sono stringhe a sei decimali. Senza `--output` il JSON va su stdout; la diagnosi va su stderr. Errori di configurazione restituiscono exit code 2. `runs/` è esclusa da Git. Questo export **non è un checkpoint ricaricabile**.
 
-`run` esegue N settimane sincrone del profilo `real_economy`, verifica le invarianti e scrive il CSV completo. `--output` è facoltativo e aggiunge snapshot finale e diagnostica delle imprese. Le celle CSV vuote e i `null` JSON indicano metriche non osservate, ad esempio prezzi senza scambi. La CLI non implementa ancora pausa/velocità o ripresa da checkpoint.
+`run` esegue N settimane sincrone dei profili `real_economy` e `monetary_economy`, verifica le invarianti e scrive il CSV completo. `--output` è facoltativo e aggiunge snapshot finale e diagnostica delle imprese. Le celle CSV vuote e i `null` JSON indicano metriche non osservate, ad esempio prezzi senza scambi. La CLI non implementa ancora pausa/velocità o ripresa da checkpoint.
 
 Altri comandi verificati:
 
@@ -37,7 +39,7 @@ uv run --locked ruff format --check src tests
 uv --native-tls build
 ```
 
-La build 0.2.0 produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01; non è stata ripetuta per T02. Dettagli nei rispettivi report.
+La build 0.3.0 produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01; non è stata ripetuta per T02. Dettagli nei rispettivi report.
 
 API Python disponibile:
 

@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, model_validator
 
-from economic_sim.config import Amount, Nonnegative, Positive, Price, Rate, StrictModel
+from economic_sim.config import Amount, Fraction, Nonnegative, Positive, Price, Rate, StrictModel
 from economic_sim.money import money
 
 Identifier = Annotated[str, Field(min_length=1)]
@@ -30,6 +30,9 @@ class Loan(StrictModel):
     purpose: str
     collateral_ids: tuple[str, ...]
     status: Literal["performing", "arrears", "closed", "written_down"]
+    recall_notice_week: Week | None = None
+    arrears_weeks: Annotated[int, Field(ge=0)] = 0
+    collateral_value: Amount = Decimal("0")
     # Capitale residuo sempre letto dagli account, non duplicato nel contratto.
 
     @model_validator(mode="after")
@@ -40,6 +43,31 @@ class Loan(StrictModel):
         ):
             raise ValueError("Interessi/revisione soltanto dalla settimana successiva")
         return self
+
+
+class CentralBankLoan(StrictModel):
+    id: Identifier
+    bank_id: int
+    principal: Price
+    annual_rate: Rate
+    originated_week: Week
+    due_week: Week
+    facility: Literal["ordinary", "emergency"]
+    collateral_account: Identifier
+    collateral_amount: Price
+    haircut: Fraction
+    status: Literal["performing", "arrears", "closed"]
+
+
+class CreditDecision(StrictModel):
+    request_id: Identifier
+    borrower_id: int
+    bank_id: int | None
+    requested: Price
+    granted: Amount
+    annual_rate: Rate | None
+    status: Literal["approved", "partial", "rejected", "duplicate"]
+    reason: Identifier
 
 
 class Bond(StrictModel):

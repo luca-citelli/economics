@@ -30,6 +30,15 @@ class StepTransaction:
                 self.attributes[name] = value.copy()
         self.history_length = len(sim.history)
         self.cpi_length = len(sim.cpi_history)
+        if hasattr(sim, "finance"):
+            self.finance = (
+                sim.finance.policy,
+                sim.finance.pending_policy.copy(),
+                sim.finance.cb_loans.copy(),
+                sim.finance.processed_requests.copy(),
+                sim.finance.rejections.copy(),
+                sim.finance.flows.copy(),
+            )
 
     def rollback(self):
         sim = self.sim
@@ -51,3 +60,12 @@ class StepTransaction:
         del sim.cpi_history[self.cpi_length :]
         sim.__dict__.clear()
         sim.__dict__.update(self.attributes)
+        if hasattr(self, "finance"):
+            (
+                sim.finance.policy,
+                sim.finance.pending_policy,
+                sim.finance.cb_loans,
+                sim.finance.processed_requests,
+                sim.finance.rejections,
+                sim.finance.flows,
+            ) = self.finance

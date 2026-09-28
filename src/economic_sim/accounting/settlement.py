@@ -31,11 +31,12 @@ class ReserveAccount:
 
 
 class Settlement:
-    def __init__(self, ledger, deposits, reserves, loans):
+    def __init__(self, ledger, deposits, reserves, loans, refinance=None):
         self.ledger = ledger
         self.deposits = deposits
         self.reserves = reserves
         self.loans = loans
+        self.refinance = refinance
 
     def _delta(self, aid, amount):
         return change(self.ledger.accounts[aid], amount)
@@ -55,7 +56,9 @@ class Settlement:
         if source.bank_id != target.bank_id:
             a, b = self.reserves[source.bank_id], self.reserves[target.bank_id]
             if self.ledger.available(a.asset) < amount:
-                raise SettlementError("bank_settlement_failure")
+                shortfall = money(amount - self.ledger.available(a.asset))
+                if self.refinance is None or self.refinance(source.bank_id, shortfall) < shortfall:
+                    raise SettlementError("bank_settlement_failure")
             lines += [
                 self._delta(a.asset, -amount),
                 self._delta(a.liability, -amount),

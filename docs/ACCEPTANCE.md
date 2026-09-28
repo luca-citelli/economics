@@ -1,6 +1,6 @@
 # Matrice di accettazione D1
 
-Aggiornamento 27 settembre 2026: **T01 e T02 verificati** nei rispettivi profili. Evidenze nei report [T01](reports/T01.md) (`26986e7`) e [T02](reports/T02.md) (`210063a`). Le righe condivise distinguono il nucleo verificato dalle parti future; D1 resta incompleto.
+Aggiornamento 28 settembre 2026: **T01–T03 verificati** nei rispettivi profili. Evidenze nei report [T01](reports/T01.md) (`26986e7`) e [T02](reports/T02.md) (`210063a`). Le righe condivise distinguono il nucleo verificato dalle parti future; D1 resta incompleto.
 
 Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice non può ridurre il perimetro di riferimento §2.3.
 
@@ -13,8 +13,8 @@ Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice n
 | A05 | Lavoro, salari emergenti, occupazione unica | T02 | Matching a turni, salari unici, revisioni e settlement fallito in `test_real_simulation.py`; [report T02](reports/T02.md) | Verificato T02 a fiscalità zero |
 | A06 | Produzione vincolata da input, capitale e lavoro; giacimenti | T02 | Quattro fattori mancanti, energia pregressa, costo medio e invarianti su 52 settimane; [report T02](reports/T02.md) | Verificato T02 |
 | A07 | Mercati distinti e prezzi transati, offerti e domanda non evasa | T02 | `test_real_markets.py`, prezzi e CPI senza scambi; CSV 11 prodotti/52 settimane; [report T02](reports/T02.md) | Verificato T02 senza acquirente pubblico |
-| A08 | Credito rolling e vincoli finanziari | T03 | Tassi, revisione, rifiuti, erogazioni uniche | Non verificato |
-| A09 | Strumenti BC, interessi e facilities con collateral | T03 | Trasmissione tassi e garanzie non duplicate | Non verificato |
+| A08 | Credito rolling e vincoli finanziari | T03 | `test_finance.py`; [report T03](reports/T03.md) | Verificato T03 |
+| A09 | Strumenti BC, interessi e facilities con collateral | T03 | `test_finance.py`; [report T03](reports/T03.md) | Verificato T03 |
 | A10 | Tasse, conto Tesoro, acquisti pubblici | T04 | Ciclo cassa con contropartite | Non verificato |
 | A11 | Asta bond e acquisti BC effettivi | T04 | Prezzo marginale, pareggi, budget e invenduto | Non verificato |
 | A12 | Scadenza pubblica, costo ammortizzato e deficit non finanziato | T04 | Rimborso dopo 52 settimane e default controllato | Non verificato |
