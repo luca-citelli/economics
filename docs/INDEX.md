@@ -42,7 +42,7 @@ I numeri § sono gli identificatori storici delle regole 3.1, conservati nei doc
 - [Guida alla lettura](READING_GUIDE.md), [struttura repository](technical/repository_layout.md).
 - [Archivio storico](archive/README.md): non normativo, non necessario all'implementazione ordinaria.
 
-T01 ha creato le fondamenta; T02 il ciclo reale da CLI; T03 credito e politica monetaria. Backend e frontend restano alle milestone successive. Apertura nei [contratti T01](technical/t01_contracts.md), economia reale nei [contratti T02](technical/t02_contracts.md), finanza nei [contratti T03](technical/t03_contracts.md). Evidenze nei report [T01](reports/T01.md), [T02](reports/T02.md) e [T03](reports/T03.md).
+T01 ha creato le fondamenta; T02 il ciclo reale da CLI; T03 credito e politica monetaria; T04 Tesoro e debito; T05 quote e crisi. Backend e frontend restano alle milestone successive. Contratti: [T01](technical/t01_contracts.md), [T02](technical/t02_contracts.md), [T03](technical/t03_contracts.md), [T04](technical/t04_contracts.md), [T05](technical/t05_contracts.md). Evidenze nei report [T01](reports/T01.md), [T02](reports/T02.md), [T03](reports/T03.md), [T04](reports/T04.md) e [T05](reports/T05.md).
 
 ## Efficienza e calcolo vettoriale
 

@@ -1,16 +1,16 @@
 # Piano di implementazione D1
 
-Aggiornamento: 28 settembre 2026. **T04 completato e verificato; follow-up T03 chiuso** con credito familiare per i bisogni primari e confronto dei finanziatori. D1 resta da implementare nelle milestone successive.
+Aggiornamento: 28 settembre 2026. **T05 completato e verificato**: economia integrata da CLI con quote primarie, investimento reale, default, liquidazioni e risoluzioni bancarie. D1 richiede ancora runner/API, frontend, calibrazione e consegna.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno; T04 e follow-up T03 chiusi.
-- Prossimo task: **T05**, da avviare su incarico.
-- Ultimo risultato: package 0.4.1; fiscalità/debito T04 e richieste familiari primarie con regolamento cross-bank T03.
-- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T04.
-- Verifiche eseguite: 109 test, Ruff, run T03 integrato da 52 settimane con ledger validato; [report T03](docs/reports/T03.md) e [report T04](docs/reports/T04.md). `uv lock --check` e build 0.4.1 non verificati per accesso negato all'interprete/cache `uv`.
-- Problema economico aperto: nel run T03 l'occupazione scende a 14 e la soddisfazione primaria a zero alla settimana 52; il credito familiare viene attivato ma non riavvia la produzione. Calibrazione/diagnosi macro resta aperta per T05/T08.
-- Prima azione successiva: leggere T05 e i moduli collegati; preservare vincoli, controparti e test T01–T04.
+- Task corrente: nessuno; T05 chiuso.
+- Prossimo task: **T06**, da avviare su incarico.
+- Ultimo risultato: package 0.5.0; profilo `complete_economy` e tre scenari CLI investimento/crisi.
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T05 `1ecb7a2`.
+- Verifiche eseguite: 125 test, Ruff, lock, build 0.5.0 e quattro run CLI da 52 settimane con invarianti; [report T05](docs/reports/T05.md).
+- Problema economico aperto: nel run base T05 l'occupazione scende a 38 e la soddisfazione primaria a zero alla settimana 52. La raccolta azionaria non si attiva nel profilo base, ma funziona nello scenario investimento. Calibrazione/diagnosi macro resta T08.
+- Prima azione successiva: leggere T06 e i moduli collegati; preservare vincoli, controparti, eventi e test T01–T05.
 
 ## Stato delle milestone
 
@@ -20,7 +20,7 @@ Aggiornamento: 28 settembre 2026. **T04 completato e verificato; follow-up T03 c
 | T02 | [Economia reale](tasks/T02.md) | T01 | DONE | [Report](docs/reports/T02.md): 86 test, Ruff, build, 52 settimane/CSV e invarianti; `210063a` |
 | T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | DONE | Follow-up credito familiare/cross-bank; 109 test, run T03 52 settimane; [Report](docs/reports/T03.md) |
 | T04 | [Governo e debito](tasks/T04.md) | T03 | DONE | [Report](docs/reports/T04.md) |
-| T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | NOT_STARTED | Non ancora implementato |
+| T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | DONE | [Report](docs/reports/T05.md): 125 test, Ruff, build, quattro run CLI/52 settimane; `1ecb7a2` |
 | T06 | [Runner e API](tasks/T06.md) | T01–T05 | NOT_STARTED | Non ancora implementato |
 | T07 | [Frontend interattivo](tasks/T07.md) | T06 | NOT_STARTED | Non ancora implementato |
 | T08 | [Calibrazione e robustezza](tasks/T08.md) | T01–T07 | NOT_STARTED | Non ancora implementato |
