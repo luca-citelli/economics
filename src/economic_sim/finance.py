@@ -135,7 +135,7 @@ class Finance:
             contract = sim.employment.get(person)
             if contract is not None:
                 expected_contract_income = contract.wage
-                if sim.config.execution.profile == "fiscal_economy":
+                if sim.config.execution.profile in {"fiscal_economy", "complete_economy"}:
                     expected_contract_income *= Decimal(
                         str(1 - sim.config.government.labor_income_tax_rate)
                     )
@@ -187,6 +187,8 @@ class Finance:
         if amount <= ZERO:
             raise ValueError("Importo richiesto non positivo")
         sim, cfg = self.sim, self.sim.config.banks
+        if borrower in sim.crisis.defaulted_people or borrower in sim.crisis.liquidations:
+            return self._reject(request_id, borrower, amount, "borrower_in_default")
         home = sim.deposits[borrower].bank_id
         active_banks = sim.banks.column("active")
         candidates = [home] + [
@@ -220,6 +222,10 @@ class Finance:
                 continue
             assets = sheets[bank]["assets"]
             equity = sheets[bank]["equity"]
+            if sim.config.execution.profile == "complete_economy":
+                own_shares = sim.crisis.own_share_value(bank)
+                assets -= own_shares
+                equity -= own_shares
             capital_capacity = money(
                 max(ZERO, equity / Decimal(str(cfg.min_equity_ratio)) - assets)
             )
@@ -521,15 +527,15 @@ class Finance:
             if loan.status not in {"performing", "arrears"} or sim.week < loan.interest_from_week:
                 continue
             principal = sim.ledger.balance(loan.debt_account)
-            due = money(principal * weekly_rate(loan.annual_rate))
+            current = money(principal * weekly_rate(loan.annual_rate))
+            due = money(current + loan.arrears)
             if due <= ZERO:
                 continue  # tassi prestiti negativi non sono offerti dalla formula D1
             dep = sim.deposits[loan.borrower_id]
             if sim.ledger.available(dep.asset) < due:
                 sim._loans[loan_id] = loan.model_copy(
                     update={
-                        "arrears": money(loan.arrears + due),
-                        "arrears_weeks": loan.arrears_weeks + 1,
+                        "arrears": money(loan.arrears + current),
                         "status": "arrears",
                     }
                 )
@@ -543,8 +549,7 @@ class Finance:
                     raise
                 sim._loans[loan_id] = loan.model_copy(
                     update={
-                        "arrears": money(loan.arrears + due),
-                        "arrears_weeks": loan.arrears_weeks + 1,
+                        "arrears": money(loan.arrears + current),
                         "status": "arrears",
                     }
                 )
@@ -576,10 +581,10 @@ class Finance:
                 new_accounts=tuple(a for a in (expense, income) if a.id not in sim.ledger.accounts),
             )
             self.flows["loan_interest"] += due
+            update = {"arrears": ZERO, "arrears_weeks": 0, "status": "performing"}
             if sim.week >= loan.next_review_week:
-                sim._loans[loan_id] = loan.model_copy(
-                    update={
-                        "annual_rate": self.loan_rate(0.0),
-                        "next_review_week": sim.week + sim.config.banks.review_weeks,
-                    }
+                update.update(
+                    annual_rate=self.loan_rate(0.0),
+                    next_review_week=sim.week + sim.config.banks.review_weeks,
                 )
+            sim._loans[loan_id] = loan.model_copy(update=update)

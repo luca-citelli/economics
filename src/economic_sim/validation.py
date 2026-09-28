@@ -120,7 +120,7 @@ def validate_state(sim, *, full=True):
             )
     for holding in sim.share_holdings:
         require(
-            holding.issue_id in sim.share_issues and holding.owner_id in sim.people.id_to_row,
+            holding.issue_id in sim.share_issues and holding.owner_id in entity_ids,
             "Quota orfana",
         )
         require(
@@ -149,6 +149,9 @@ def validate_state(sim, *, full=True):
             "Capitale emittente non collegato",
         )
         holdings = [h for h in sim.share_holdings if h.issue_id == issue.id]
+        require(
+            len({h.owner_id for h in holdings}) == len(holdings), "Quote duplicate per proprietario"
+        )
         require(
             sum((h.quantity for h in holdings), ZERO) == issue.total_shares,
             "Totale quote non riconciliato",

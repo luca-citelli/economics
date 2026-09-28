@@ -27,10 +27,12 @@ class StepTransaction:
         self.attributes["employment"] = sim.employment.copy()
         self.attributes["_loans"] = sim._loans.copy()
         self.attributes["_bonds"] = sim._bonds.copy()
+        self.attributes["_share_issues"] = sim._share_issues.copy()
         for name, value in sim.__dict__.items():
             if isinstance(value, np.ndarray):
                 self.attributes[name] = value.copy()
         self.history_length = len(sim.history)
+        self.event_history_length = len(sim.event_history)
         self.cpi_length = len(sim.cpi_history)
         if hasattr(sim, "finance"):
             self.finance = (
@@ -53,6 +55,24 @@ class StepTransaction:
                 sim.treasury.opening_balance,
                 getattr(sim.treasury, "spending_budget", None),
             )
+        if hasattr(sim, "equity"):
+            self.equity = (
+                sim.equity.last_results.copy(),
+                sim.equity.flows.copy(),
+                {k: list(v) for k, v in sim.equity.profit_history.items()},
+            )
+        if hasattr(sim, "crisis"):
+            self.crisis = (
+                sim.crisis.liquidations.copy(),
+                sim.crisis.closed_liquidations.copy(),
+                sim.crisis.resolved_banks.copy(),
+                sim.crisis.resolved_this_week.copy(),
+                sim.crisis.defaulted_people.copy(),
+                sim.crisis.flows.copy(),
+                sim.crisis.loss_exposed_firms.copy(),
+                sim.crisis.tax_arrears_weeks.copy(),
+                sim.crisis.asset_proceeds.copy(),
+            )
 
     def rollback(self):
         sim = self.sim
@@ -71,12 +91,14 @@ class StepTransaction:
             table._columns = columns
         sim.rng.restore(self.rng)
         del sim.history[self.history_length :]
+        del sim.event_history[self.event_history_length :]
         del sim.cpi_history[self.cpi_length :]
         sim.__dict__.clear()
         sim.__dict__.update(self.attributes)
         from types import MappingProxyType
 
         sim.bonds = MappingProxyType(sim._bonds)
+        sim.share_issues = MappingProxyType(sim._share_issues)
         sim.loans = MappingProxyType(sim._loans)
         sim.settlement.loans = sim._loans
         if hasattr(self, "finance"):
@@ -104,3 +126,17 @@ class StepTransaction:
                 sim.treasury.__dict__.pop("spending_budget", None)
             else:
                 sim.treasury.spending_budget = spending_budget
+        if hasattr(self, "equity"):
+            sim.equity.last_results, sim.equity.flows, sim.equity.profit_history = self.equity
+        if hasattr(self, "crisis"):
+            (
+                sim.crisis.liquidations,
+                sim.crisis.closed_liquidations,
+                sim.crisis.resolved_banks,
+                sim.crisis.resolved_this_week,
+                sim.crisis.defaulted_people,
+                sim.crisis.flows,
+                sim.crisis.loss_exposed_firms,
+                sim.crisis.tax_arrears_weeks,
+                sim.crisis.asset_proceeds,
+            ) = self.crisis

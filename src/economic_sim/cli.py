@@ -7,10 +7,11 @@ import yaml
 
 from economic_sim import Simulation
 from economic_sim.config import load_config
+from economic_sim.serialization import canonical_value
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Simulatore economico — T04")
+    parser = argparse.ArgumentParser(description="Simulatore economico — T05")
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate", help="Valida scenario e catalogo")
     validate.add_argument("config", type=Path)
@@ -44,6 +45,11 @@ def main(argv=None):
                 "profile": config.execution.profile,
                 "invariants": "verified",
                 "firms": sim.firm_diagnostics(),
+                "equity_auctions": canonical_value(sim.equity.last_results),
+                "liquidations": sim.crisis.liquidations,
+                "resolved_banks": sorted(sim.crisis.resolved_banks),
+                "market_ids": [market.market_id for market in sim.market_results],
+                "event_history": canonical_value(sim.event_history),
             }
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)

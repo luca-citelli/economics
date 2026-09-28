@@ -91,14 +91,15 @@ class Bond(StrictModel):
 class ShareIssue(StrictModel):
     id: Identifier
     issuer_id: int
-    total_shares: Price
+    total_shares: Amount
     capital_account: Identifier
+    last_issue_price: Price | None = None
 
 
 class ShareHolding(StrictModel):
     issue_id: Identifier
     owner_id: int
-    quantity: Price
+    quantity: Amount
     asset_account: Identifier
 
 

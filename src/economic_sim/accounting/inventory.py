@@ -61,7 +61,11 @@ class InventoryAccounting:
         suffix = f"inventory:{product}" if stock == "inventory" else stock
         self.post(
             tx_id,
-            "final_goods" if reason == "consumption" else "operating_close",
+            "final_goods"
+            if reason == "consumption"
+            else "crisis"
+            if reason == "liquidation_loss"
+            else "operating_close",
             reason,
             [(entity, product, -quantity, stock)],
             [

@@ -127,7 +127,9 @@ def collect(sim, start_accounts, consumption, investment, depreciation, spoilage
     output_cost = sum(sim.output_costs, ZERO)
     inputs = sum(sim.input_costs, ZERO)
     result["inventory_change_at_cost"] = inventory - initial_inventory
-    result["inventory_change_excluding_losses"] = inventory - initial_inventory + spoilage
+    result["inventory_change_excluding_losses"] = (
+        inventory - initial_inventory + spoilage + sim.crisis.flows["liquidation_inventory_loss"]
+    )
     result["gdp_production"] = (
         revenue - initial_revenue + output_cost - (cogs - initial_cogs) - inputs
     )

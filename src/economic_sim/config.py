@@ -106,7 +106,13 @@ class Features(StrictModel):
 
 
 class ExecutionConfig(StrictModel):
-    profile: Literal["initialization_only", "real_economy", "monetary_economy", "fiscal_economy"]
+    profile: Literal[
+        "initialization_only",
+        "real_economy",
+        "monetary_economy",
+        "fiscal_economy",
+        "complete_economy",
+    ]
     phases: dict[str, bool]
 
     @model_validator(mode="after")
@@ -118,6 +124,8 @@ class ExecutionConfig(StrictModel):
             if self.profile == "monetary_economy"
             else set(FISCAL_PHASES)
             if self.profile == "fiscal_economy"
+            else set(COMPLETE_PHASES)
+            if self.profile == "complete_economy"
             else set()
         )
         if set(self.phases) != set(PHASES) or {k for k, v in self.phases.items() if v} != active:
@@ -137,6 +145,20 @@ REAL_PHASES = (
 )
 MONETARY_PHASES = ("financial_service", *REAL_PHASES)
 FISCAL_PHASES = ("financial_service", "treasury", *REAL_PHASES, "distributions")
+COMPLETE_PHASES = ("financial_service", "treasury", *REAL_PHASES, "crisis", "distributions")
+
+
+class CrisisInvestmentConfig(StrictModel):
+    max_new_share_fraction: Annotated[float, Field(gt=0, le=1)] = 0.1
+    minimum_raise_fraction: Fraction = 0.5
+    book_price_fraction: Annotated[float, Field(gt=0)] = 0.8
+    household_surplus_fraction: Fraction = 0.1
+    required_return: Annotated[float, Field(gt=0)] = 0.06
+    expected_payout: Fraction = 0.2
+    dividend_payout: Fraction = 0.2
+    liquidation_discount: Fraction = 0.5
+    liquidation_weeks: Annotated[int, Field(ge=1)] = 4
+    bank_target_ratio: Annotated[float, Field(gt=0, lt=1)] = 0.1
 
 
 class RealEconomyConfig(StrictModel):
@@ -359,6 +381,7 @@ class Config(StrictModel):
     opening: OpeningConfig
     catalog: Catalog
     real_economy: RealEconomyConfig | None = None
+    crisis_investment: CrisisInvestmentConfig | None = None
 
     @property
     def firm_scale(self) -> float:
@@ -392,9 +415,11 @@ class Config(StrictModel):
                 raise ValueError(
                     "Profilo T02: fiscalità, interessi e facilities a zero/disabilitati"
                 )
-        elif self.execution.profile in {"monetary_economy", "fiscal_economy"}:
+        elif self.execution.profile in {"monetary_economy", "fiscal_economy", "complete_economy"}:
             if self.real_economy is None:
                 raise ValueError("monetary_economy richiede i parametri dell'economia reale")
+        if self.execution.profile == "complete_economy" and self.crisis_investment is None:
+            raise ValueError("complete_economy richiede crisis_investment")
         if s.initial_banks > s.initial_population:
             raise ValueError("Ogni banca deve avere almeno una persona cliente")
         labor = (
@@ -436,6 +461,7 @@ class ScenarioFile(StrictModel):
     people: PeopleConfig
     opening: OpeningConfig
     real_economy: RealEconomyConfig | None = None
+    crisis_investment: CrisisInvestmentConfig | None = None
 
 
 class UniqueKeyLoader(yaml.SafeLoader):

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "economic-sim"
-version = "0.4.1"
-description = "Simulatore economico locale con mercati reali, credito e politica monetaria"
+version = "0.5.0"
+description = "Simulatore economico locale con mercati reali, finanza, investimenti e crisi"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = ["numpy>=2.2,<2.3", "pydantic>=2.11,<2.12", "PyYAML>=6.0,<6.1"]

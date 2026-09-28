@@ -15,6 +15,8 @@ from economic_sim.agents.production import operating_close, produce
 from economic_sim.agents.state import LAYOUT_VERSION, AgentView, readonly_copy
 from economic_sim.config import PHASES, Config
 from economic_sim.contracts import Snapshot
+from economic_sim.crisis import Crisis
+from economic_sim.equity import EquityMarket
 from economic_sim.finance import Finance
 from economic_sim.initialization import initialize
 from economic_sim.markets.capital import buy_capital, plan_investment
@@ -46,13 +48,16 @@ class Simulation:
         sim.reserves = MappingProxyType(sim.reserves)
         sim._bonds = dict(sim.bonds)
         sim.bonds = MappingProxyType(sim._bonds)
-        sim.share_issues = MappingProxyType(sim.share_issues)
+        sim._share_issues = dict(sim.share_issues)
+        sim.share_issues = MappingProxyType(sim._share_issues)
         sim._loans = {}
         sim.loans = MappingProxyType(sim._loans)
         sim.settlement = Settlement(sim.ledger, sim.deposits, sim.reserves, sim._loans)
         sim.finance = Finance(sim)
         sim.treasury = Treasury(sim)
-        if config.execution.profile in {"monetary_economy", "fiscal_economy"}:
+        sim.equity = EquityMarket(sim)
+        sim.crisis = Crisis(sim)
+        if config.execution.profile in {"monetary_economy", "fiscal_economy", "complete_economy"}:
             sim.settlement.refinance = sim.finance.refinance
         sim.products = sorted(config.catalog.products, key=lambda p: p.id)
         sim.product_by_name = {p.name: p for p in sim.products}
@@ -62,6 +67,7 @@ class Simulation:
         sim.last_error = None
         sim.market_results = []
         sim.events = []
+        sim.event_history = []
         sim.phase_trace = []
         initialize_metrics(sim)
         sim.validate()
@@ -76,6 +82,7 @@ class Simulation:
             "real_economy",
             "monetary_economy",
             "fiscal_economy",
+            "complete_economy",
         }:
             raise ValueError("step richiede un profilo incrementale")
         if self.status != "PAUSED":
@@ -106,6 +113,7 @@ class Simulation:
             )
             start_accounts = firm_accounts(self)
             opening_profit = self.treasury.profit_snapshot()
+            opening_dividend_profit = self.equity.distributable_profit_snapshot()
             self.treasury.open_week()
             labor, consumption, investment, depreciation, spoilage = {}, ZERO, ZERO, ZERO, ZERO
             for phase in PHASES:
@@ -116,7 +124,7 @@ class Simulation:
                 self.phase_trace.append(phase)
                 if phase == "financial_service":
                     self.finance.service()
-                    if self.config.execution.profile == "fiscal_economy":
+                    if self.config.execution.profile in {"fiscal_economy", "complete_economy"}:
                         self.treasury.service_taxes()
                         self.treasury.accrue_bonds()
                 elif phase == "treasury":
@@ -140,15 +148,28 @@ class Simulation:
                     produce(self, extraction=False)
                 elif phase == "final_goods":
                     consumption = consume_households(self)
-                    if self.config.execution.profile != "fiscal_economy":
+                    if self.config.execution.profile not in {"fiscal_economy", "complete_economy"}:
                         self.events.append("noop:government_purchases:T02")
                 elif phase == "investment":
-                    self.events.append("noop:primary_equity:T02")
+                    if self.config.execution.profile == "complete_economy":
+                        self.equity.run()
+                    else:
+                        self.events.append("noop:primary_equity:T02")
                     investment = buy_capital(self)
                 elif phase == "operating_close":
                     depreciation, spoilage = operating_close(self)
-                elif phase == "distributions" and self.config.execution.profile == "fiscal_economy":
+                elif phase == "crisis":
+                    self.crisis.run()
+                    investment += self.crisis.flows["liquidation_capital_investment"]
+                    if self.status == "TERMINATED":
+                        break
+                elif phase == "distributions" and self.config.execution.profile in {
+                    "fiscal_economy",
+                    "complete_economy",
+                }:
                     self.treasury.accrue_profit_tax(opening_profit)
+                    if self.config.execution.profile == "complete_economy":
+                        self.equity.distribute(opening_dividend_profit)
             metrics = (
                 {
                     "week": self.week,
@@ -163,6 +184,7 @@ class Simulation:
             if self.status != "TERMINATED" and metrics["gdp_discrepancy"] != ZERO:
                 raise ValueError("PIL produzione/spesa non riconciliato")
             self.phase_trace.append("commit")
+            self.event_history.append({"week": self.week, "events": tuple(self.events)})
             self.weekly_metrics = metrics
             self.history.append(metrics.copy())
             self.state_version += 1
@@ -226,11 +248,28 @@ class Simulation:
                 },
                 "share_issues": dict(self.share_issues),
                 "share_holdings": self.share_holdings,
+                "equity_state": {
+                    "last_results": self.equity.last_results,
+                    "flows": self.equity.flows,
+                    "profit_history": self.equity.profit_history,
+                },
+                "crisis_state": {
+                    "liquidations": self.crisis.liquidations,
+                    "closed_liquidations": sorted(self.crisis.closed_liquidations),
+                    "resolved_banks": sorted(self.crisis.resolved_banks),
+                    "resolved_this_week": sorted(self.crisis.resolved_this_week),
+                    "defaulted_people": sorted(self.crisis.defaulted_people),
+                    "loss_exposed_firms": sorted(self.crisis.loss_exposed_firms),
+                    "tax_arrears_weeks": self.crisis.tax_arrears_weeks,
+                    "asset_proceeds": self.crisis.asset_proceeds,
+                    "flows": self.crisis.flows,
+                },
                 "employment": self.employment,
                 "cpi_prices": self.cpi_prices,
                 "cpi_ages": self.cpi_ages,
                 "cpi_history": self.cpi_history,
                 "history": self.history,
+                "event_history": self.event_history,
                 "phase_trace": self.phase_trace,
             }
         )
@@ -324,6 +363,10 @@ class Simulation:
                     - self.treasury.opening_balance
                 ),
             )
+        if hasattr(self, "equity"):
+            metrics.update(self.equity.flows)
+        if hasattr(self, "crisis"):
+            metrics.update(self.crisis.flows)
         return metrics
 
     def metrics(self):
@@ -361,11 +404,15 @@ class Simulation:
                 "bonds": dict(self.bonds),
                 "share_issues": dict(self.share_issues),
                 "share_holdings": self.share_holdings,
+                "equity_auctions": self.equity.last_results,
+                "liquidations": self.crisis.liquidations,
+                "resolved_banks": sorted(self.crisis.resolved_banks),
                 "physical": self.physical.to_dict(),
                 "phase_trace": self.phase_trace,
+                "event_history": self.event_history,
                 "limitations": [
                     "Profilo: " + self.config.execution.profile,
-                    "Crisi di imprese/banche, quote primarie e dividendi non implementati",
+                    "Crisi e distribuzioni disponibili solo nel profilo complete_economy",
                     "Calibrazione proposta; non è il deliverable D1",
                 ],
             }

@@ -41,7 +41,9 @@ def consume_households(sim):
     consumed = np.zeros((len(people.ids), 7))
     cost = ZERO
     public_remaining = (
-        sim.treasury.spending_budget if sim.config.execution.profile == "fiscal_economy" else ZERO
+        sim.treasury.spending_budget
+        if sim.config.execution.profile in {"fiscal_economy", "complete_economy"}
+        else ZERO
     )
     for col in range(7):
         orders = []

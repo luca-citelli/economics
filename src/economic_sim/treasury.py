@@ -179,16 +179,15 @@ class Treasury:
         rate = Decimal(str(sim.config.government.profit_tax_rate))
         if rate == ZERO:
             return
+        closing_profit = self.profit_snapshot()
         for entity in [*map(int, sim.firms.ids), *map(int, sim.banks.ids)]:
-            profit = sum(
-                (
-                    sim.ledger.balance(a.id) * (1 if a.kind == AccountKind.INCOME else -1)
-                    for a in sim.ledger.accounts.values()
-                    if a.entity_id == entity and a.kind in (AccountKind.INCOME, AccountKind.EXPENSE)
-                ),
-                ZERO,
-            )
-            taxable = max(ZERO, profit - opening_profit.get(entity, ZERO))
+            if (
+                sim.config.execution.profile == "complete_economy"
+                and entity in sim.firms.id_to_row
+                and entity in sim.crisis.liquidations
+            ):
+                continue
+            taxable = max(ZERO, closing_profit[entity] - opening_profit.get(entity, ZERO))
             due = money(taxable * rate)
             if due <= ZERO:
                 continue
@@ -577,12 +576,27 @@ class Treasury:
 
     def profit_snapshot(self):
         sim = self.sim
+        excluded = (
+            {
+                "resolution_gain",
+                "deposit_conversion_gain",
+                "debt_forgiveness",
+                "tax_forgiveness",
+                "liquidation_gain",
+                "liquidation_recovery",
+                "in_kind_recovery",
+            }
+            if sim.config.execution.profile == "complete_economy"
+            else set()
+        )
         return {
             entity: sum(
                 (
                     sim.ledger.balance(a.id) * (1 if a.kind == AccountKind.INCOME else -1)
                     for a in sim.ledger.accounts.values()
-                    if a.entity_id == entity and a.kind in (AccountKind.INCOME, AccountKind.EXPENSE)
+                    if a.entity_id == entity
+                    and a.kind in (AccountKind.INCOME, AccountKind.EXPENSE)
+                    and a.purpose not in excluded
                 ),
                 ZERO,
             )

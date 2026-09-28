@@ -109,7 +109,7 @@ def match_and_pay(sim):
         if contract.last_paid_week >= sim.week:
             raise ValueError("Salario già pagato nella settimana")
         try:
-            if sim.config.execution.profile == "fiscal_economy":
+            if sim.config.execution.profile in {"fiscal_economy", "complete_economy"}:
                 net = sim.treasury.pay_wage(
                     f"w{sim.week}:wage:{person}", contract.employer_id, person, contract.wage
                 )
