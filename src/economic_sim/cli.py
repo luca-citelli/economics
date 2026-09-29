@@ -11,8 +11,10 @@ from economic_sim.serialization import canonical_value
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Simulatore economico — T05")
+    parser = argparse.ArgumentParser(description="Simulatore economico — T06")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    serve = subparsers.add_parser("serve", help="Avvia API locale con un solo worker")
+    serve.add_argument("--port", type=int, default=8000)
     validate = subparsers.add_parser("validate", help="Valida scenario e catalogo")
     validate.add_argument("config", type=Path)
     init = subparsers.add_parser("init", help="Costruisce e verifica lo stato della settimana 0")
@@ -25,6 +27,13 @@ def main(argv=None):
     run.add_argument("--output", type=Path, help="Metriche finali, checksum e fasi JSON")
     args = parser.parse_args(argv)
     try:
+        if args.command == "serve":
+            if not 1 <= args.port <= 65535:
+                raise ValueError("Porta fuori intervallo")
+            import uvicorn
+
+            uvicorn.run("economic_sim.api:app", host="127.0.0.1", port=args.port, workers=1)
+            return 0
         config = load_config(args.config)
         if args.command == "validate":
             print(f"Configurazione valida: 11 prodotti, profilo {config.execution.profile}.")

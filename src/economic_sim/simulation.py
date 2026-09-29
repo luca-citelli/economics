@@ -30,7 +30,7 @@ from economic_sim.validation import validate_state
 
 
 class Simulation:
-    """Motore sincrono a proprietario unico; il runner concorrente resta T06."""
+    """Motore sincrono a proprietario unico, indipendente dal runner."""
 
     @classmethod
     def from_config(cls, config: Config):
@@ -233,6 +233,9 @@ class Simulation:
                 "reserves": dict(self.reserves),
                 "loans": dict(self.loans),
                 "central_bank_loans": self.finance.cb_loans,
+                "processed_credit_requests": self.finance.processed_requests,
+                "credit_rejections": self.finance.rejections,
+                "finance_flows": self.finance.flows,
                 "active_policy": self.finance.policy,
                 "pending_policy": self.finance.pending_policy,
                 "bonds": dict(self.bonds),
@@ -240,6 +243,8 @@ class Simulation:
                     "last_price": self.treasury.last_price,
                     "expected_policy_rate": self.treasury.expected_policy_rate,
                     "pending_cb_orders": self.treasury.pending_cb_orders,
+                    "pending_budgets": self.treasury.pending_budgets,
+                    "active_bond_purchase_budget": self.treasury.active_bond_purchase_budget,
                     "tax_due": self.treasury.tax_due,
                     "tax_arrears": self.treasury.tax_arrears,
                     "default_arrears": self.treasury.default_arrears,
@@ -270,6 +275,7 @@ class Simulation:
                 "cpi_history": self.cpi_history,
                 "history": self.history,
                 "event_history": self.event_history,
+                "market_results": self.market_results,
                 "phase_trace": self.phase_trace,
             }
         )

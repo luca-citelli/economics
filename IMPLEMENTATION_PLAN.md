@@ -1,16 +1,16 @@
 # Piano di implementazione D1
 
-Aggiornamento: 28 settembre 2026. **T05 completato e verificato**: economia integrata da CLI con quote primarie, investimento reale, default, liquidazioni e risoluzioni bancarie. D1 richiede ancora runner/API, frontend, calibrazione e consegna.
+Aggiornamento: 29 settembre 2026. **T06 completato e verificato**: runner seriale, API locale, WebSocket e checkpoint con ripresa deterministica. D1 richiede ancora frontend, calibrazione e consegna.
 
 ## Ripresa rapida
 
-- Task corrente: nessuno; T05 chiuso.
-- Prossimo task: **T06**, da avviare su incarico.
-- Ultimo risultato: package 0.5.0; profilo `complete_economy` e tre scenari CLI investimento/crisi.
-- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T05 `1ecb7a2`.
-- Verifiche eseguite: 125 test, Ruff, lock, build 0.5.0 e quattro run CLI da 52 settimane con invarianti; [report T05](docs/reports/T05.md).
+- Task corrente: nessuno; T06 chiuso.
+- Prossimo task: **T07**, da avviare su incarico.
+- Ultimo risultato: package 0.6.0; runner/API FastAPI, checkpoint JSON e replay 100 contro 40+60 identico.
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; [report T06](docs/reports/T06.md).
+- Verifiche eseguite: suite completa, Ruff, lock, build 0.6.0, replay/checkpoint e smoke HTTP reale; [report T06](docs/reports/T06.md).
 - Problema economico aperto: nel run base T05 l'occupazione scende a 38 e la soddisfazione primaria a zero alla settimana 52. La raccolta azionaria non si attiva nel profilo base, ma funziona nello scenario investimento. Calibrazione/diagnosi macro resta T08.
-- Prima azione successiva: leggere T06 e i moduli collegati; preservare vincoli, controparti, eventi e test T01–T05.
+- Prima azione successiva: leggere T07 e i moduli collegati; collegare il frontend al solo stato pubblicato da T06.
 
 ## Stato delle milestone
 
@@ -21,7 +21,7 @@ Aggiornamento: 28 settembre 2026. **T05 completato e verificato**: economia inte
 | T03 | [Banche e politica monetaria](tasks/T03.md) | T01–T02 | DONE | Follow-up credito familiare/cross-bank; 109 test, run T03 52 settimane; [Report](docs/reports/T03.md) |
 | T04 | [Governo e debito](tasks/T04.md) | T03 | DONE | [Report](docs/reports/T04.md) |
 | T05 | [Capitale e crisi](tasks/T05.md) | T02–T04 | DONE | [Report](docs/reports/T05.md): 125 test, Ruff, build, quattro run CLI/52 settimane; `1ecb7a2` |
-| T06 | [Runner e API](tasks/T06.md) | T01–T05 | NOT_STARTED | Non ancora implementato |
+| T06 | [Runner e API](tasks/T06.md) | T01–T05 | DONE | [Report](docs/reports/T06.md): runner, API, checkpoint, replay 100=40+60 e suite completa |
 | T07 | [Frontend interattivo](tasks/T07.md) | T06 | NOT_STARTED | Non ancora implementato |
 | T08 | [Calibrazione e robustezza](tasks/T08.md) | T01–T07 | NOT_STARTED | Non ancora implementato |
 | T09 | [Consegna](tasks/T09.md) | T08 | NOT_STARTED | Non ancora implementato |

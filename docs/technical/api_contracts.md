@@ -4,24 +4,21 @@ Documento normativo corrente (revisione 3.2). Riferimenti storici: §13.1–13.2
 
 ### 13.1 API Python del motore
 
-**Stato dopo T01:** sono eseguibili `load_config`, `Simulation.from_config`, `validate`, `snapshot` e la CLI di apertura. Contratti minimi in `src/economic_sim/contracts.py`, dettagli nei [contratti T01](t01_contracts.md). L'esempio completo seguente è il traguardo delle milestone successive: step, politiche, checkpoint ed export temporali non sono ancora implementati.
+**Stato dopo T06:** `load_config`, `Simulation.from_config`, `validate`, `snapshot`, `step` ed export CSV sono eseguibili. Il runner programma politiche e gestisce checkpoint tramite `Runner`, `save_checkpoint` e `load_checkpoint`; l'esempio Python seguente mostra il percorso sincrono. Le API interattive effettive sono nei [contratti T06](t06_contracts.md) e nel README.
 
 ```python
-config = load_config("configs/base.yaml")
+config = load_config("configs/t05.yaml")
 sim = Simulation.from_config(config)
-sim.schedule_policy(command_id="rate-001", effective_week=10,
-                    patch={"policy_rate": 0.04})
 for _ in range(52):
-    result = sim.step()
-    if result.terminated:
+    sim.step()
+    if sim.status == "TERMINATED":
         break
-sim.save_checkpoint("runs/example/checkpoint.json")
-sim.export_metrics_csv("runs/example/metrics.csv")
+sim.export_csv("runs/example/metrics.csv")
 ```
 
-`step()` non include sleep né dipende dal browser. Il runner gestisce la velocità. Ogni risultato contiene almeno `run_id`, `week`, `state_version`, metriche, riepiloghi dei mercati, eventi e checksum dello stato economico canonico.
+`step()` non include sleep né dipende dal browser. Il runner gestisce la velocità. `snapshot()` contiene `run_id`, `week`, `state_version`, metriche, mercati, eventi e checksum dello stato economico canonico.
 
-### 13.2 API HTTP proposta
+### 13.2 API HTTP implementata in T06
 
 | Metodo/percorso | Funzione |
 |---|---|
@@ -37,5 +34,7 @@ sim.export_metrics_csv("runs/example/metrics.csv")
 | `WS /api/runs/{id}/events` | Snapshot/eventi numerati, stato runner, conferme |
 
 Il comando accettato non equivale a operazione completata: risposta con `command_id`, stato e settimana assegnata, poi conferma di esecuzione. API versionate; errori di validazione, conflitti e guasti distinguibili.
+
+Corpi JSON, limiti, stato runner, path locali e formato checkpoint sono definiti nei [contratti T06](t06_contracts.md). La UI browser che esercita questi endpoint resta T07.
 
 WebSocket usa `sequence_number`, `week`, `state_version`; dopo una lacuna il client recupera uno snapshot e lo storico necessario via HTTP. Il server può accorpare notifiche ma non perdere dati economici persistiti. Grafici e dettagli non devono essere richiesti per tutti gli agenti a ogni frame.

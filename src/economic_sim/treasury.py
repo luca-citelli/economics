@@ -17,6 +17,11 @@ class BondBid:
     quantity: int
     max_price: Decimal
     budget: Decimal
+    bid_id: int | None = None
+
+    @property
+    def key(self):
+        return self.holder_id if self.bid_id is None else self.bid_id
 
 
 def price_from_yield(annual_yield: float, weeks: int = 52) -> Decimal:
@@ -33,13 +38,13 @@ def clear_bond_auction(quantity: int, bids: list[BondBid], reserve_price: Decima
     eligible = []
     seen = set()
     for bid in bids:
-        if bid.holder_id in seen or bid.quantity < 0 or bid.max_price <= ZERO or bid.budget < ZERO:
+        if bid.key in seen or bid.quantity < 0 or bid.max_price <= ZERO or bid.budget < ZERO:
             raise ValueError("Offerta duplicata o invalida")
-        seen.add(bid.holder_id)
+        seen.add(bid.key)
         affordable = int((bid.budget / bid.max_price).to_integral_value(rounding=ROUND_FLOOR))
         if bid.max_price >= reserve_price and affordable > 0:
             eligible.append((bid, min(bid.quantity, affordable)))
-    eligible.sort(key=lambda x: (-x[0].max_price, x[0].holder_id))
+    eligible.sort(key=lambda x: (-x[0].max_price, x[0].key))
     allocations = {}
     remaining = quantity
     clearing_price = None
@@ -50,14 +55,14 @@ def clear_bond_auction(quantity: int, bids: list[BondBid], reserve_price: Decima
             break
         if total <= remaining:
             for bid, q in group:
-                allocations[bid.holder_id] = q
+                allocations[bid.key] = q
             remaining -= total
         else:
-            base = {bid.holder_id: remaining * q // total for bid, q in group}
+            base = {bid.key: remaining * q // total for bid, q in group}
             residue = remaining - sum(base.values())
-            order = sorted(group, key=lambda x: (-(remaining * x[1] % total), x[0].holder_id))
+            order = sorted(group, key=lambda x: (-(remaining * x[1] % total), x[0].key))
             for bid, _ in order[:residue]:
-                base[bid.holder_id] += 1
+                base[bid.key] += 1
             allocations.update(base)
             remaining = 0
         clearing_price = price
@@ -70,6 +75,8 @@ class Treasury:
         self.last_price = None
         self.expected_policy_rate = sim.config.central_bank.policy_rate
         self.pending_cb_orders = {}
+        self.pending_budgets = {}
+        self.active_bond_purchase_budget = sim.config.central_bank.weekly_bond_purchase_budget
         self.tax_due = {}
         self.tax_arrears = {}
         self.default_arrears = ZERO
@@ -77,6 +84,8 @@ class Treasury:
         self.open_week()
 
     def open_week(self):
+        if self.sim.week in self.pending_budgets:
+            self.active_bond_purchase_budget = self.pending_budgets.pop(self.sim.week)
         self.flows = dict(
             tax=ZERO,
             labor_tax=ZERO,
@@ -95,9 +104,9 @@ class Treasury:
         self.opening_balance = self.available()
 
     def schedule_cb_order(self, week, budget, max_price):
-        if week <= self.sim.week or week in self.pending_cb_orders:
-            raise ValueError("Ordine BC una tantum: settimana futura unica")
-        self.pending_cb_orders[week] = (money(budget), money(max_price))
+        if week <= self.sim.week or money(budget) <= ZERO or money(max_price) <= ZERO:
+            raise ValueError("Ordine BC una tantum: settimana futura e importi positivi")
+        self.pending_cb_orders.setdefault(week, []).append((money(budget), money(max_price)))
 
     def _a(self, aid):
         return self.sim.ledger.accounts[aid]
@@ -322,13 +331,11 @@ class Treasury:
                 bids.append(BondBid(bank, int(budget / p), p, budget))
             cb = sim.config.central_bank
             one_time = self.pending_cb_orders.pop(sim.week, None)
-            if one_time is not None:
-                budget, p = one_time
-            elif cb.primary_bond_purchases_enabled:
-                budget, p = cb.weekly_bond_purchase_budget, cb.bond_max_price
-            else:
-                budget, p = ZERO, cb.bond_max_price
-            if budget > ZERO:
+            if one_time:
+                for index, (budget, p) in enumerate(one_time, start=1):
+                    bids.append(BondBid(sim.central_bank.id, int(budget / p), p, budget, -index))
+            elif cb.primary_bond_purchases_enabled and self.active_bond_purchase_budget > ZERO:
+                budget, p = self.active_bond_purchase_budget, cb.bond_max_price
                 bids.append(BondBid(sim.central_bank.id, int(budget / p), p, budget))
         # Depositi dei clienti e offerte delle banche insistono sulle stesse riserve.
         # Vincoliamo i budget massimi prima del clearing per non spendere due volte.
@@ -350,8 +357,15 @@ class Treasury:
             )
             budget = min(bid.budget, cash, pools[bank])
             pools[bank] -= budget
-            funded_bids.append(BondBid(bid.holder_id, bid.quantity, bid.max_price, budget))
-        price, allocations, unsold = clear_bond_auction(offered, funded_bids, reserve_price)
+            funded_bids.append(
+                BondBid(bid.holder_id, bid.quantity, bid.max_price, budget, bid.bid_id)
+            )
+        price, bid_allocations, unsold = clear_bond_auction(offered, funded_bids, reserve_price)
+        holders = {bid.key: bid.holder_id for bid in funded_bids}
+        allocations = {}
+        for bid_id, units in bid_allocations.items():
+            holder = holders[bid_id]
+            allocations[holder] = allocations.get(holder, 0) + units
         self.flows["bond_offered"] += money(offered)
         self.flows["bond_unsold"] += money(unsold)
         if price is None:

@@ -1,6 +1,6 @@
 # Matrice di accettazione D1
 
-Aggiornamento 28 settembre 2026: **T01–T05 verificati** nei rispettivi profili. Evidenze nei report [T01](reports/T01.md), [T02](reports/T02.md), [T03](reports/T03.md), [T04](reports/T04.md) e [T05](reports/T05.md). Le righe condivise distinguono il nucleo verificato dalle parti future; D1 resta incompleto.
+Aggiornamento 29 settembre 2026: **T01–T06 verificati** nei rispettivi profili. Evidenze nei report [T01](reports/T01.md), [T02](reports/T02.md), [T03](reports/T03.md), [T04](reports/T04.md), [T05](reports/T05.md) e [T06](reports/T06.md). Le righe condivise distinguono il nucleo verificato dalle parti future; D1 resta incompleto.
 
 Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice non può ridurre il perimetro di riferimento §2.3.
 
@@ -22,13 +22,13 @@ Le prove di dettaglio sono nelle schede task e in riferimento §14. La matrice n
 | A14 | Investimento reale e capacità da t+1 | T02/T05 | Acquisti al costo T02 e raccolta che compra capitale installato da t+1 in `test_scenario_equity_proceeds_buy_capital_effective_next_week`; [report T05](reports/T05.md) | Verificato T02/T05 |
 | A15 | Default imprese, liquidazioni e perdite | T05 | Arretrati sanati, compratore reale/assente, riparto chirografario e quote in natura in `test_equity_crisis.py`; scenario crisi CLI; [report T05](reports/T05.md) | Verificato T05 |
 | A16 | Risoluzione bancaria e distinzione liquidità/solvibilità | T05 | Caso `E=−20`, target 10, H 30, depositi insufficienti, prestiti persistenti, quote proprie e stress bancario CLI; [report T05](reports/T05.md) | Verificato T05 |
-| A17 | Pausa, +1, +N, automatico e velocità | T06/T07 | Manuale/batch/automatico e pausa in corso | Non verificato |
-| A18 | Comandi idempotenti e politiche a confine di step | T06 | Duplicati, concorrenza e settimana assegnata | Non verificato |
-| A19 | Step atomico, errori e terminazioni distinti | T06 | Rollback in fase risorse/commit T02 e crisi T05, default sovrano T04 e crisi bancaria irrisolta T05; runner in T06 | Core sincrono verificato T02/T04/T05; runner T06 non verificato |
-| A20 | Checkpoint/ripresa deterministica | T06 | 100 vs 40+60 e checksum | Non verificato |
-| A21 | API, snapshot e riconnessione | T06/T07 | Eventi persi, recupero e due schede | Non verificato |
+| A17 | Pausa, +1, +N, automatico e velocità | T06/T07 | Manuale/batch/automatico e pausa in corso | Runner verificato T06; UI T07 non eseguita |
+| A18 | Comandi idempotenti e politiche a confine di step | T06 | Duplicati, concorrenza e settimana assegnata | Verificato T06; [report](reports/T06.md) |
+| A19 | Step atomico, errori e terminazioni distinti | T06 | Rollback in fase risorse/commit T02 e crisi T05, default sovrano T04 e crisi bancaria irrisolta T05; runner in T06 | Core e runner verificati T02/T04–T06; [report T06](reports/T06.md) |
+| A20 | Checkpoint/ripresa deterministica | T06 | 100 vs 40+60 e checksum | Verificato T06; [report](reports/T06.md) |
+| A21 | API, snapshot e riconnessione | T06/T07 | Eventi persi, recupero e due schede | API/WebSocket e recupero HTTP verificati T06; percorso browser a due schede T07 non eseguito |
 | A22 | Dashboard, pannello BC, mercati e agenti su dati reali | T07 | Percorso browser e ispezione UI | Non verificato |
-| A23 | Salvataggi ed export di tutte le settimane | T06/T07 | CSV completo T02/T05 e cronologia eventi T05 nel JSON CLI; [report T05](reports/T05.md) | Export CLI verificato T02/T05; checkpoint/import/UI non verificati |
+| A23 | Salvataggi ed export di tutte le settimane | T06/T07 | CSV completo T02/T05 e cronologia eventi T05 nel JSON CLI; [report T05](reports/T05.md) | Checkpoint/import e CSV API verificati T06; UI T07 non eseguita |
 | A24 | Metriche definite: CPI/PIL, lavoro, credito, distribuzione | T08 | [Dizionario T02-v1](technical/t02_contracts.md), CPI imputato, bridge PIL esatto e dati reali; [report T02](reports/T02.md) | Metriche operative T02 verificate; completamento statistico e controparti future non verificati |
 | A25 | Scenari e almeno cinque seed nei principali | T08 | Report riproducibile, inclusi collassi | Non verificato |
 | A26 | Baseline 260 settimane, prestazioni misurate | T08 | Tempi, p95, memoria, macchina/versioni | Non verificato |
@@ -54,5 +54,5 @@ T09 può dichiarare D1 completo soltanto quando le righe pertinenti sono verific
 |---|---|---|---|---|
 | A30 | Stato per colonne e layout compatibile NumPy | T01 | `test_column_mapping_isolation_and_no_duplicate_balances`; [contratti](technical/t01_contracts.md) | Verificato T01 |
 | A31 | Kernel batch con riferimento scalare | T02/T08 | Riferimenti scalari a 1/257/5.000 righe in `test_real_kernels.py`; [report T02](reports/T02.md) | Equivalenza kernel T02 verificata; profiling T08 non eseguito |
-| A32 | Precisione monetaria e buffer/rollback coerenti | T01/T06 | Budget esatti T01/T02, pareggi microquote/UM e rollback stato quote/crisi/eventi T05; [report T05](reports/T05.md) | Core sincrono T01/T02/T05 verificato; concorrenza/checkpoint T06 non verificati |
+| A32 | Precisione monetaria e buffer/rollback coerenti | T01/T06 | Budget esatti T01/T02, pareggi microquote/UM e rollback stato quote/crisi/eventi T05; [report T05](reports/T05.md) | Core e concorrenza/checkpoint verificati T01–T06; [report T06](reports/T06.md) |
 | A33 | Profiling e benchmark di scala | T08 | Costi per fase, kernel vs end-to-end, 10.000/52 e stima 100.000 | Non verificato |

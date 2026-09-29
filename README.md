@@ -1,18 +1,18 @@
 # economics — simulatore economico agent-based
 
-Motore Python **0.5.0**, 28 settembre 2026, sulla documentazione modulare 3.2.
+Motore Python **0.6.0**, 29 settembre 2026, sulla documentazione modulare 3.2.
 
 L'utente interpreta la banca centrale; mercati e agenti formano prezzi, salari e rendimenti. Webapp locale: motore Python indipendente, FastAPI, React/TypeScript/Vite.
 
 ## Stato del progetto
 
-**T05 implementato:** `configs/t05.yaml` attiva quote primarie, diluizione, dividendi, default e liquidazioni, perdite su prestiti e conversione dei depositi nelle banche insolventi. T04 conserva il profilo fiscale precedente. Non ci sono API HTTP o frontend; D1 non è completo. Prossimo task: **T06 — runner e API**.
+**T06 implementato:** runner seriale, API FastAPI locale, controlli temporali, WebSocket e checkpoint JSON con ripresa deterministica. `configs/t05.yaml` mantiene l'economia integrata T05. Il frontend resta T07; D1 non è completo.
 
 Il profilo incrementale non è calibrato: nella prova di 52 settimane attività e occupazione calano fortemente, fino a zero consumi finali nell'ultima settimana. Le invarianti restano rispettate; risultati, diagnosi e limiti nel [report T02](docs/reports/T02.md).
 
 ## Installazione e uso
 
-Servono Python **3.11.9** e `uv` (verificato **0.7.5**). Il progetto accetta Python 3.11 e fissa l'interprete in `.python-version`; `uv.lock` blocca le dipendenze. Non servono Node o servizi esterni per T02. Eseguire dalla radice del repository, in PowerShell su Windows oppure in una shell su macOS/Linux:
+Servono Python **3.11.9** e `uv` (verificato **0.7.5**). Il progetto accetta Python 3.11 e fissa l'interprete in `.python-version`; `uv.lock` blocca le dipendenze. Non servono Node o servizi esterni per T06. Eseguire dalla radice del repository, in PowerShell su Windows oppure in una shell su macOS/Linux:
 
 ```sh
 uv --native-tls sync --locked
@@ -30,13 +30,30 @@ uv run --locked economic-sim run configs/t05-investment.yaml --steps 52 --csv ru
 uv run --locked economic-sim run configs/t05-crisis.yaml --steps 52 --csv runs/t05-crisis.csv --output runs/t05-crisis.json
 uv run --locked economic-sim run configs/t05-bank-crisis.yaml --steps 52 --csv runs/t05-bank-crisis.csv --output runs/t05-bank-crisis.json
 uv run --locked pytest -q
+uv run --locked economic-sim serve --port 8000
 ```
 
 `sync` crea `.venv` e installa package e dipendenze di sviluppo. Su questa macchina `--native-tls` è necessario per usare i certificati di sistema, senza disabilitare la verifica TLS. L'installazione iniziale richiede rete o cache già disponibile; il core non usa la rete. I comandi sono stati eseguiti su Windows; macOS/Linux non sono ancora stati collaudati.
 
 `validate` controlla scenario e catalogo; `init` costruisce lo stato reale, verifica le invarianti e salva il riepilogo con aggregati, bilanci, scritture, proprietà e inventari. Gli importi JSON sono stringhe a sei decimali. Senza `--output` il JSON va su stdout; la diagnosi va su stderr. Errori di configurazione restituiscono exit code 2. `runs/` è esclusa da Git. Questo export **non è un checkpoint ricaricabile**.
 
-`run` esegue N settimane sincrone dei profili `real_economy`, `monetary_economy`, `fiscal_economy` e `complete_economy`, verifica le invarianti e scrive il CSV completo. `--output` aggiunge snapshot finale, diagnosi delle imprese, aste azionarie, liquidazioni, mercati fisici e cronologia degli eventi settimanali. Le celle CSV vuote e i `null` JSON indicano metriche non osservate, ad esempio prezzi senza scambi. Un default sovrano o una crisi bancaria irrisolta conclude il run con stato `TERMINATED` ed evento dedicato; un errore software conserva stato `ERROR`. La CLI non implementa ancora pausa/velocità o ripresa da checkpoint.
+`run` esegue N settimane sincrone dei profili `real_economy`, `monetary_economy`, `fiscal_economy` e `complete_economy`, verifica le invarianti e scrive il CSV completo. `--output` aggiunge snapshot finale, diagnosi delle imprese, aste azionarie, liquidazioni, mercati fisici e cronologia degli eventi settimanali. Le celle CSV vuote e i `null` JSON indicano metriche non osservate, ad esempio prezzi senza scambi. Un default sovrano o una crisi bancaria irrisolta conclude il run con stato `TERMINATED` ed evento dedicato; un errore software conserva stato `ERROR`. La CLI `run` è autonoma e sincrona; pausa, velocità e import si controllano tramite API.
+
+### Provare l'API locale
+
+Avviare `uv run --locked economic-sim serve --port 8000` in un terminale. Il server ascolta soltanto `127.0.0.1`, con un processo e un worker. In un secondo terminale PowerShell:
+
+```powershell
+$run = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/runs' -ContentType 'application/json' -Body '{"schema_version":1,"config_path":"configs/t05-crisis.yaml"}'
+$id = $run.run_id
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/runs/$id/commands" -ContentType 'application/json' -Body '{"schema_version":1,"command_id":"step-1","type":"step"}'
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/runs/$id/snapshot"
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/runs/$id/metrics?from_week=1"
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/runs/$id/checkpoints" -ContentType 'application/json' -Body '{"schema_version":1,"path":"runs/manual.json"}'
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/runs/import' -ContentType 'application/json' -Body '{"schema_version":1,"path":"runs/manual.json"}'
+```
+
+Attendere che `snapshot.status` torni `PAUSED` prima di salvare; la conferma del comando indica accettazione, non completamento dello step. `GET .../export/metrics.csv` esporta tutte le settimane chiuse. Schema completo, comandi `batch`/`run`/`pause`/`speed`/`policy` e WebSocket in [contratti T06](docs/technical/t06_contracts.md). Su macOS/Linux gli stessi endpoint funzionano con qualsiasi client HTTP; la riga di avvio è identica. L'avvio su queste piattaforme non è ancora stato verificato.
 
 Gli scenari T05 da 100 persone esercitano rispettivamente la raccolta di quote, i default su prestiti e una crisi bancaria da remunerazione delle riserve estremamente negativa. Quest'ultimo è uno stress contabile stilizzato, non una previsione o un tasso consigliato. I parametri sono nei file YAML e i risultati nelle colonne CSV/eventi JSON.
 
@@ -48,7 +65,7 @@ uv run --locked ruff format --check src tests
 uv --native-tls build
 ```
 
-La build produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01. La verifica della build 0.5.0 è nel [report T05](docs/reports/T05.md).
+La build produce wheel e archivio sorgente in `dist/`. L'installazione della wheel in un secondo ambiente è stata verificata per T01. La build 0.6.0 è documentata nel [report T06](docs/reports/T06.md).
 
 API Python disponibile:
 
@@ -95,7 +112,7 @@ Non ci sono decisioni bloccanti per iniziare. Restano i default già proposti: D
 
 ## Prossime milestone
 
-T06 aggiungerà runner/backend; T07 il frontend; T08–T09 calibrazione e consegna. La prova T05 da 52 settimane non sostituisce il benchmark D1 da 260 settimane o quello di scala.
+T07 aggiungerà il frontend; T08–T09 calibrazione e consegna. La prova T06 da 100 settimane non sostituisce il benchmark D1 da 260 settimane o quello di scala.
 
 ## Efficienza richiesta
 
