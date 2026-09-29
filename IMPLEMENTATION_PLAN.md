@@ -7,7 +7,7 @@ Aggiornamento: 29 settembre 2026. **T06 completato e verificato**: runner serial
 - Task corrente: nessuno; T06 chiuso.
 - Prossimo task: **T07**, da avviare su incarico.
 - Ultimo risultato: package 0.6.0; runner/API FastAPI, checkpoint JSON e replay 100 contro 40+60 identico.
-- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; [report T06](docs/reports/T06.md).
+- Codice esistente: `src/economic_sim/`, `configs/`, `tests/`; checkpoint locale T06 `71feb08`, [report T06](docs/reports/T06.md).
 - Verifiche eseguite: suite completa, Ruff, lock, build 0.6.0, replay/checkpoint e smoke HTTP reale; [report T06](docs/reports/T06.md).
 - Problema economico aperto: nel run base T05 l'occupazione scende a 38 e la soddisfazione primaria a zero alla settimana 52. La raccolta azionaria non si attiva nel profilo base, ma funziona nello scenario investimento. Calibrazione/diagnosi macro resta T08.
 - Prima azione successiva: leggere T07 e i moduli collegati; collegare il frontend al solo stato pubblicato da T06.
