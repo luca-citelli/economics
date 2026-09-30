@@ -5,7 +5,7 @@ import csv
 import io
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from economic_sim.checkpoint import load_checkpoint, save_checkpoint
 from economic_sim.contracts import PolicyPatch
@@ -54,8 +54,11 @@ class Runner:
         self._policies = list((runtime or {}).get("policies", []))
         self._orders = list((runtime or {}).get("orders", []))
         self._core_snapshot = canonical_value(self.sim.snapshot())
+        self._core_snapshot["inventories"] = self._inventories()
         self._published_policy = self.sim.finance.policy
+        self._published_budget = str(self.sim.treasury.active_bond_purchase_budget)
         self._history = [canonical_value(row) for row in sim.history]
+        self._event_history = canonical_value(sim.event_history)
         self._agent_data = {}
         self._transactions = {}
         self._journal_offset = 0
@@ -81,10 +84,20 @@ class Runner:
                 "command_id": row["command_id"],
                 "type": row["type"],
                 "effective_week": row["effective_week"],
+                "parameters": row.get(
+                    "patch", {k: row[k] for k in ("budget", "max_price") if k in row}
+                ),
             }
             for row in self._policies + self._orders
             if row["effective_week"] > self._core_snapshot["week"]
         ]
+        snap["decision_history"] = copy.deepcopy(
+            sorted(self._commands.values(), key=lambda row: row["server_sequence"])[-100:]
+        )
+        snap["central_bank_controls"] = {
+            **asdict(self._published_policy),
+            "weekly_bond_purchase_budget": self._published_budget,
+        }
         return snap
 
     def snapshot(self):
@@ -100,6 +113,10 @@ class Runner:
                     if row["week"] >= from_week and (to_week is None or row["week"] <= to_week)
                 ]
             )
+
+    def event_history(self):
+        with self._condition:
+            return copy.deepcopy(self._event_history)
 
     def csv(self):
         with self._condition:
@@ -120,11 +137,20 @@ class Runner:
             transactions = self._transactions.get(agent_id, ())
             return {
                 **copy.deepcopy(self._agent_data[agent_id]),
-                "transactions": copy.deepcopy(transactions[offset : offset + limit]),
+                "transactions": copy.deepcopy(
+                    list(reversed(transactions))[offset : offset + limit]
+                ),
                 "total_transactions": len(transactions),
                 "offset": offset,
                 "limit": limit,
             }
+
+    def _inventories(self):
+        totals = self.sim.physical.quantities("inventory").sum(axis=0)
+        return {
+            product.name: float(totals[self.sim.physical.product_rows[product.id]])
+            for product in self.sim.products
+        }
 
     def _capture_agents(self):
         sheets = self.sim.ledger.balance_sheets()
@@ -249,6 +275,7 @@ class Runner:
                 if not self._in_step:
                     self._apply_pending()
                     self._core_snapshot = canonical_value(self.sim.snapshot())
+                    self._core_snapshot["inventories"] = self._inventories()
             elif kind == "bond_purchase":
                 if not self.sim.config.execution.phases["treasury"]:
                     raise Conflict("Asta pubblica disattivata nel profilo")
@@ -272,6 +299,7 @@ class Runner:
                 if not self._in_step:
                     self._apply_pending()
                     self._core_snapshot = canonical_value(self.sim.snapshot())
+                    self._core_snapshot["inventories"] = self._inventories()
             else:
                 raise ValueError(f"Tipo di comando sconosciuto: {kind}")
             self._command_sequence += 1
@@ -299,11 +327,7 @@ class Runner:
 
     def _validate_policy(self, week, patch):
         policy = self._published_policy
-        data = {
-            "reserve_rate": policy.reserve_rate,
-            "policy_rate": policy.policy_rate,
-            "emergency_rate": policy.emergency_rate,
-        }
+        data = asdict(policy)
         candidate = {
             "effective_week": week,
             "server_sequence": self._command_sequence + 1,
@@ -317,11 +341,7 @@ class Runner:
 
     def _apply_pending(self):
         policy = self.sim.finance.policy
-        data = {
-            "reserve_rate": policy.reserve_rate,
-            "policy_rate": policy.policy_rate,
-            "emergency_rate": policy.emergency_rate,
-        }
+        data = asdict(policy)
         for row in sorted(
             self._policies, key=lambda x: (x["effective_week"], x["server_sequence"])
         ):
@@ -380,9 +400,12 @@ class Runner:
                 if not error and self.sim.status != "TERMINATED":
                     self._apply_pending()
                 self._published_policy = self.sim.finance.policy
+                self._published_budget = str(self.sim.treasury.active_bond_purchase_budget)
                 self._core_snapshot = canonical_value(self.sim.snapshot())
+                self._core_snapshot["inventories"] = self._inventories()
                 if not error:
                     self._history.append(canonical_value(self.sim.history[-1]))
+                    self._event_history = canonical_value(self.sim.event_history)
                     self._capture_agents()
                 self._notify()
                 if self._mode in {"RUNNING", "STEPPING"} and not self._max_speed:

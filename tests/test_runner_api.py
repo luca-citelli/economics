@@ -294,3 +294,81 @@ def test_http_snapshot_commands_history_and_import(small_config):
         assert imported.status_code == 200
         assert imported.json()["run_id"] != run_id
         assert imported.json()["checksum"] == runner.sim.economic_checksum()
+
+
+def test_frontend_create_overrides_and_served_build():
+    with TestClient(app) as client:
+        page = client.get("/")
+        assert page.status_code == 200
+        assert "Laboratorio monetario" in page.text
+        assert client.get("/assets/missing.js").status_code == 404
+        assert client.get("/api/unknown").status_code == 404
+        created = client.post(
+            "/api/runs",
+            json={
+                "schema_version": 1,
+                "config_path": "configs/t05-crisis.yaml",
+                "seed": 7,
+                "initial_population": 120,
+                "initial_banks": 2,
+            },
+        )
+        assert created.status_code == 200
+        run_id = created.json()["run_id"]
+        config = service.current(run_id).sim.config.simulation
+        assert (config.seed, config.initial_population, config.initial_banks) == (7, 120, 2)
+        assert created.json()["week"] == 0
+        assert created.json()["status"] == "PAUSED"
+
+
+def test_facility_policy_pending_active_and_history(small_config):
+    runner = Runner(Simulation.from_config(small_config))
+    try:
+        before = runner.snapshot()["central_bank_controls"]
+        patch = PolicyPatch(
+            emergency_lending_enabled=False,
+            facility_cap_share=0.25,
+            ordinary_haircut=0.10,
+        )
+        result = runner.command(Command("facility", "policy", submitted_at="test", patch=patch))
+        pending = runner.snapshot()
+        assert result["effective_week"] == 1
+        assert pending["central_bank_controls"] == before
+        assert pending["pending_commands"][0]["parameters"]["facility_cap_share"] == 0.25
+        assert pending["decision_history"][-1]["command_id"] == "facility"
+        runner.command(Command("one", "step"))
+        after = wait_week(runner, 1)
+        assert after["status"] == "PAUSED"
+        assert after["central_bank_controls"]["emergency_lending_enabled"] is False
+        assert after["central_bank_controls"]["facility_cap_share"] == 0.25
+        assert after["central_bank_controls"]["ordinary_haircut"] == 0.10
+        assert after["pending_commands"] == []
+        assert len(runner.event_history()) == 1
+        assert after["inventories"]["food"] == pytest.approx(
+            sum(runner.sim.physical.quantities("inventory")[:, 0])
+        )
+    finally:
+        runner.close()
+
+
+def test_http_policy_patch_is_validated_and_scheduled():
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/runs", json={"schema_version": 1, "config_path": "configs/t05-crisis.yaml"}
+        ).json()
+        run_id = created["run_id"]
+        result = client.post(
+            f"/api/runs/{run_id}/commands",
+            json={
+                "schema_version": 1,
+                "command_id": "http-policy",
+                "type": "policy",
+                "submitted_at": "test",
+                "patch": {"policy_rate": 0.03, "emergency_lending_enabled": False},
+            },
+        )
+        assert result.status_code == 200
+        assert result.json()["effective_week"] == 1
+        pending = client.get(f"/api/runs/{run_id}/snapshot").json()
+        assert pending["central_bank_controls"]["policy_rate"] == 0.02
+        assert pending["pending_commands"][0]["parameters"]["policy_rate"] == 0.03

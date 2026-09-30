@@ -33,17 +33,35 @@ class PolicyState:
     reserve_rate: float
     policy_rate: float
     emergency_rate: float
+    emergency_lending_enabled: bool = True
+    facility_cap_share: float = 0.5
+    ordinary_haircut: float = 0.05
+    emergency_haircut: float = 0.35
 
     def __post_init__(self):
         if not (-1 < self.reserve_rate <= self.policy_rate <= self.emergency_rate):
             raise ValueError("Richiesto reserve_rate <= policy_rate <= emergency_rate")
+        if type(self.emergency_lending_enabled) is not bool or not all(
+            0 <= value <= 1
+            for value in (self.facility_cap_share, self.ordinary_haircut, self.emergency_haircut)
+        ):
+            raise ValueError("Parametri delle facilities non validi")
 
 
 class Finance:
     def __init__(self, sim):
         self.sim = sim
         cb = sim.config.central_bank
-        self.policy = PolicyState(cb.reserve_rate, cb.policy_rate, cb.emergency_rate)
+        banks = sim.config.banks
+        self.policy = PolicyState(
+            cb.reserve_rate,
+            cb.policy_rate,
+            cb.emergency_rate,
+            cb.emergency_lending_enabled,
+            banks.facility_cap_share,
+            banks.ordinary_haircut,
+            banks.emergency_haircut,
+        )
         self.pending_policy: dict[int, PolicyState] = {}
         self.cb_loans: dict[str, CentralBankLoan] = {}
         self.processed_requests: dict[str, CreditDecision] = {}
@@ -55,10 +73,32 @@ class Finance:
             "central_bank_credit": ZERO,
         }
 
-    def schedule_policy(self, effective_week, *, reserve_rate, policy_rate, emergency_rate):
+    def schedule_policy(
+        self,
+        effective_week,
+        *,
+        reserve_rate,
+        policy_rate,
+        emergency_rate,
+        emergency_lending_enabled=None,
+        facility_cap_share=None,
+        ordinary_haircut=None,
+        emergency_haircut=None,
+    ):
         if type(effective_week) is not int or effective_week <= self.sim.week:
             raise ValueError("La politica va programmata a un confine futuro")
-        state = PolicyState(reserve_rate, policy_rate, emergency_rate)
+        current = self.policy
+        state = PolicyState(
+            reserve_rate,
+            policy_rate,
+            emergency_rate,
+            current.emergency_lending_enabled
+            if emergency_lending_enabled is None
+            else emergency_lending_enabled,
+            current.facility_cap_share if facility_cap_share is None else facility_cap_share,
+            current.ordinary_haircut if ordinary_haircut is None else ordinary_haircut,
+            current.emergency_haircut if emergency_haircut is None else emergency_haircut,
+        )
         self.pending_policy[effective_week] = state
         return effective_week
 
@@ -310,7 +350,7 @@ class Finance:
     @money_context
     def refinance(self, bank_id, amount):
         """Facility garantita: ordinaria su bond, emergenza su prestiti performing."""
-        sim, cfg = self.sim, self.sim.config.banks
+        sim = self.sim
         amount = money(amount)
         if amount <= ZERO:
             return ZERO
@@ -318,9 +358,14 @@ class Finance:
         for bond in sim.bonds.values():
             if bond.holder_id == bank_id:
                 choices.append(
-                    ("ordinary", bond.asset_account, self.policy.policy_rate, cfg.ordinary_haircut)
+                    (
+                        "ordinary",
+                        bond.asset_account,
+                        self.policy.policy_rate,
+                        self.policy.ordinary_haircut,
+                    )
                 )
-        if sim.config.central_bank.emergency_lending_enabled:
+        if self.policy.emergency_lending_enabled:
             for loan in sim.loans.values():
                 if loan.bank_id == bank_id and loan.status == "performing":
                     choices.append(
@@ -328,7 +373,7 @@ class Finance:
                             "emergency",
                             loan.asset_account,
                             self.policy.emergency_rate,
-                            cfg.emergency_haircut,
+                            self.policy.emergency_haircut,
                         )
                     )
         for facility, collateral, rate, haircut in choices:
@@ -336,7 +381,7 @@ class Finance:
             capacity = money(available * Decimal(str(1 - haircut)))
             cap = money(
                 sim.ledger.balance_sheets()[bank_id]["assets"]
-                * Decimal(str(cfg.facility_cap_share))
+                * Decimal(str(self.policy.facility_cap_share))
             )
             granted = min(amount, capacity, cap)
             if granted <= ZERO:

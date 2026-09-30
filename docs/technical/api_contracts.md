@@ -26,6 +26,7 @@ sim.export_csv("runs/example/metrics.csv")
 | `GET /api/runs/{id}/snapshot` | Ultimo stato coerente e politiche pendenti |
 | `POST /api/runs/{id}/commands` | Step, batch, run, pause, speed, policy; corpo tipizzato e `command_id` |
 | `GET /api/runs/{id}/metrics?from_week=&to_week=` | Storico completo nell'intervallo |
+| `GET /api/runs/{id}/event-history` | Eventi economici per settimana conclusa |
 | `GET /api/runs/{id}/markets/{market_id}` | Offerte, scambi, quantità e prezzi aggregati |
 | `GET /api/runs/{id}/agents/{agent_id}` | Stato, bilancio e transazioni paginate |
 | `POST /api/runs/{id}/checkpoints` | Salvataggio a confine di step |
@@ -35,6 +36,6 @@ sim.export_csv("runs/example/metrics.csv")
 
 Il comando accettato non equivale a operazione completata: risposta con `command_id`, stato e settimana assegnata, poi conferma di esecuzione. API versionate; errori di validazione, conflitti e guasti distinguibili.
 
-Corpi JSON, limiti, stato runner, path locali e formato checkpoint sono definiti nei [contratti T06](t06_contracts.md). La UI browser che esercita questi endpoint resta T07.
+Corpi JSON, limiti, stato runner, path locali e formato checkpoint di base sono definiti nei [contratti T06](t06_contracts.md). T07 aggiunge a `POST /api/runs` gli override validati `seed`, `initial_population`, `initial_banks`; alla patch `policy` aggiunge `emergency_lending_enabled`, `facility_cap_share`, `ordinary_haircut` e `emergency_haircut`. Lo snapshot del runner espone `central_bank_controls` attivi, parametri dei `pending_commands`, `decision_history` e `inventories` per prodotto. La conferma del comando rimane distinta dall'applicazione alla settimana assegnata. Evidenze nel [report T07](../reports/T07.md).
 
 WebSocket usa `sequence_number`, `week`, `state_version`; dopo una lacuna il client recupera uno snapshot e lo storico necessario via HTTP. Il server può accorpare notifiche ma non perdere dati economici persistiti. Grafici e dettagli non devono essere richiesti per tutti gli agenti a ogni frame.

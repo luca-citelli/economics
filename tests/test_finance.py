@@ -227,6 +227,23 @@ def test_emergency_facility_preserves_equity_and_locks_collateral(sim):
     assert sim.finance.refinance(bank, money(10_000_000)) < money(10_000_000)
 
 
+def test_emergency_access_policy_changes_refinancing(sim):
+    from dataclasses import replace
+
+    borrower = int(sim.firms.ids[0])
+    bank = sim.deposits[borrower].bank_id
+    assert (
+        sim.finance.request_credit(
+            "policy-collateral-loan", borrower, money(1000), annual_income=money(100_000)
+        ).granted
+        > 0
+    )
+    sim.finance.policy = replace(sim.finance.policy, emergency_lending_enabled=False)
+    assert sim.finance.refinance(bank, money(100)) == money(0)
+    sim.finance.policy = replace(sim.finance.policy, emergency_lending_enabled=True)
+    assert sim.finance.refinance(bank, money(100)) == money(100)
+
+
 def test_rejection_reason_is_distinct_from_settlement_failure(sim):
     borrower = int(sim.people.ids[0])
     decision = sim.finance.request_credit(

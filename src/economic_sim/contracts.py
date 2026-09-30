@@ -151,6 +151,10 @@ class PolicyPatch(StrictModel):
     reserve_rate: Rate | None = None
     policy_rate: Rate | None = None
     emergency_rate: Rate | None = None
+    emergency_lending_enabled: bool | None = None
+    facility_cap_share: Fraction | None = None
+    ordinary_haircut: Fraction | None = None
+    emergency_haircut: Fraction | None = None
     weekly_bond_purchase_budget: Amount | None = None
 
     @model_validator(mode="after")

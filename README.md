@@ -1,18 +1,18 @@
 # economics — simulatore economico agent-based
 
-Motore Python **0.6.0**, 29 settembre 2026, sulla documentazione modulare 3.2.
+Motore Python e frontend **0.7.0**, 30 settembre 2026, sulla documentazione modulare 3.2.
 
 L'utente interpreta la banca centrale; mercati e agenti formano prezzi, salari e rendimenti. Webapp locale: motore Python indipendente, FastAPI, React/TypeScript/Vite.
 
 ## Stato del progetto
 
-**T06 implementato:** runner seriale, API FastAPI locale, controlli temporali, WebSocket e checkpoint JSON con ripresa deterministica. `configs/t05.yaml` mantiene l'economia integrata T05. Il frontend resta T07; D1 non è completo.
+**T07 implementato:** webapp React/TypeScript con controlli temporali, pannello BC, mercati distinti, grafici, finanza, agenti paginati, eventi, checkpoint ed export CSV. FastAPI serve la build dalla stessa porta dell'API. `configs/t05.yaml` mantiene l'economia integrata T05. Calibrazione e consegna T08–T09 restano aperte; D1 non è completo.
 
 Il profilo incrementale non è calibrato: nella prova di 52 settimane attività e occupazione calano fortemente, fino a zero consumi finali nell'ultima settimana. Le invarianti restano rispettate; risultati, diagnosi e limiti nel [report T02](docs/reports/T02.md).
 
 ## Installazione e uso
 
-Servono Python **3.11.9** e `uv` (verificato **0.7.5**). Il progetto accetta Python 3.11 e fissa l'interprete in `.python-version`; `uv.lock` blocca le dipendenze. Non servono Node o servizi esterni per T06. Eseguire dalla radice del repository, in PowerShell su Windows oppure in una shell su macOS/Linux:
+Servono Python **3.11.9**, `uv` (verificato **0.7.5**) e, per compilare la UI, Node **24.14.0** con npm **11.9.0** (versioni verificate su Windows). Il progetto accetta Python 3.11 e fissa l'interprete in `.python-version`; `uv.lock` e `frontend/package-lock.json` bloccano le dipendenze. Eseguire dalla radice del repository, in PowerShell su Windows oppure in una shell su macOS/Linux:
 
 ```sh
 uv --native-tls sync --locked
@@ -33,7 +33,19 @@ uv run --locked pytest -q
 uv run --locked economic-sim serve --port 8000
 ```
 
-`sync` crea `.venv` e installa package e dipendenze di sviluppo. Su questa macchina `--native-tls` è necessario per usare i certificati di sistema, senza disabilitare la verifica TLS. L'installazione iniziale richiede rete o cache già disponibile; il core non usa la rete. I comandi sono stati eseguiti su Windows; macOS/Linux non sono ancora stati collaudati.
+Per compilare o aggiornare il frontend prima di `serve`:
+
+```sh
+cd frontend
+npm ci
+npm run build
+cd ..
+uv run --locked economic-sim serve --port 8000
+```
+
+Aprire [http://127.0.0.1:8000/](http://127.0.0.1:8000/) nel browser. Il dev server si avvia con `cd frontend && npm run dev` e usa il proxy `/api` verso FastAPI sulla porta 8000; avviare anche il backend in un altro terminale. Dopo la build, l'uso locale non richiede Internet. La wheel 0.7.0 include gli asset compilati; la prova di installazione pulita resta T09.
+
+`sync` crea `.venv` e installa package e dipendenze di sviluppo, inclusa la libreria WebSocket necessaria a Uvicorn. Su questa macchina `--native-tls` è necessario per usare i certificati di sistema, senza disabilitare la verifica TLS. L'installazione iniziale richiede rete o cache già disponibile; simulatore e UI compilata non usano la rete esterna. I comandi sono stati eseguiti su Windows; macOS/Linux non sono ancora stati collaudati.
 
 `validate` controlla scenario e catalogo; `init` costruisce lo stato reale, verifica le invarianti e salva il riepilogo con aggregati, bilanci, scritture, proprietà e inventari. Gli importi JSON sono stringhe a sei decimali. Senza `--output` il JSON va su stdout; la diagnosi va su stderr. Errori di configurazione restituiscono exit code 2. `runs/` è esclusa da Git. Questo export **non è un checkpoint ricaricabile**.
 
@@ -53,7 +65,7 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/runs/$id/checkpoi
 Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/runs/import' -ContentType 'application/json' -Body '{"schema_version":1,"path":"runs/manual.json"}'
 ```
 
-Attendere che `snapshot.status` torni `PAUSED` prima di salvare; la conferma del comando indica accettazione, non completamento dello step. `GET .../export/metrics.csv` esporta tutte le settimane chiuse. Schema completo, comandi `batch`/`run`/`pause`/`speed`/`policy` e WebSocket in [contratti T06](docs/technical/t06_contracts.md). Su macOS/Linux gli stessi endpoint funzionano con qualsiasi client HTTP; la riga di avvio è identica. L'avvio su queste piattaforme non è ancora stato verificato.
+Attendere che `snapshot.status` torni `PAUSED` prima di salvare; la conferma del comando indica accettazione, non completamento dello step. `GET .../export/metrics.csv` esporta tutte le settimane chiuse. La UI permette di creare un run con override validati per seed, popolazione e banche. Politiche future comprendono tassi, accesso all'emergenza, cap/haircut delle facilities e budget periodico degli acquisti; la UI separa bozza, pendente e attivo. Schema di base in [contratti T06](docs/technical/t06_contracts.md), estensioni in [report T07](docs/reports/T07.md). Su macOS/Linux gli stessi endpoint funzionano con qualsiasi client HTTP; la riga di avvio è identica. L'avvio su queste piattaforme non è ancora stato verificato.
 
 Gli scenari T05 da 100 persone esercitano rispettivamente la raccolta di quote, i default su prestiti e una crisi bancaria da remunerazione delle riserve estremamente negativa. Quest'ultimo è uno stress contabile stilizzato, non una previsione o un tasso consigliato. I parametri sono nei file YAML e i risultati nelle colonne CSV/eventi JSON.
 
@@ -112,7 +124,7 @@ Non ci sono decisioni bloccanti per iniziare. Restano i default già proposti: D
 
 ## Prossime milestone
 
-T07 aggiungerà il frontend; T08–T09 calibrazione e consegna. La prova T06 da 100 settimane non sostituisce il benchmark D1 da 260 settimane o quello di scala.
+T08–T09 aggiungeranno calibrazione, benchmark di scala e prova di installazione pulita. La prova T06 da 100 settimane non sostituisce il benchmark D1 da 260 settimane o quello di scala.
 
 ## Efficienza richiesta
 

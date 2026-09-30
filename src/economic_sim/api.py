@@ -7,16 +7,17 @@ from typing import Annotated, Literal
 
 import yaml
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import Field, ValidationError, model_validator
 
-from economic_sim.config import StrictModel, load_config
+from economic_sim.config import Config, StrictModel, load_config
 from economic_sim.contracts import PolicyPatch
 from economic_sim.runner import Command, Conflict, RunService
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNS = ROOT / "runs"
 CONFIGS = ROOT / "configs"
+WEB = Path(__file__).resolve().parent / "web"
 service = RunService()
 
 
@@ -32,6 +33,9 @@ app = FastAPI(title="Economic Sim", version="1", lifespan=lifespan)
 class CreateRun(StrictModel):
     schema_version: Literal[1]
     config_path: str = "configs/t05.yaml"
+    seed: Annotated[int, Field(ge=0, lt=2**63)] | None = None
+    initial_population: Annotated[int, Field(ge=1, le=1_000_000)] | None = None
+    initial_banks: Annotated[int, Field(ge=2, le=1000)] | None = None
 
 
 class ImportRun(StrictModel):
@@ -106,6 +110,11 @@ async def value_handler(_request, exc):
 def create_run(body: CreateRun):
     try:
         config = load_config(_safe_path(body.config_path, CONFIGS, ".yaml"))
+        changes = body.model_dump(exclude_none=True, exclude={"schema_version", "config_path"})
+        if changes:
+            data = config.model_dump()
+            data["simulation"].update(changes)
+            config = Config.model_validate(data)
         return service.create(config).snapshot()
     except (OSError, yaml.YAMLError, ValidationError) as exc:
         raise HTTPException(400, detail=f"Scenario non valido: {exc}") from exc
@@ -118,7 +127,8 @@ def snapshot(run_id: str):
 
 @app.post("/api/runs/{run_id}/commands")
 def command(run_id: str, body: CommandBody):
-    return _runner(run_id).command(Command(**body.model_dump(exclude={"schema_version"})))
+    data = body.model_dump(exclude={"schema_version", "patch"})
+    return _runner(run_id).command(Command(**data, patch=body.patch))
 
 
 @app.get("/api/runs/{run_id}/metrics")
@@ -130,6 +140,11 @@ def metrics(
     if to_week is not None and to_week < from_week:
         raise ValueError("to_week precede from_week")
     return {"schema_version": 1, "rows": _runner(run_id).metrics(from_week, to_week)}
+
+
+@app.get("/api/runs/{run_id}/event-history")
+def event_history(run_id: str):
+    return {"schema_version": 1, "rows": _runner(run_id).event_history()}
 
 
 @app.get("/api/runs/{run_id}/markets/{market_id}")
@@ -207,3 +222,22 @@ async def events(socket: WebSocket, run_id: str):
         pass
     finally:
         runner.disconnect()
+
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend(path: str):
+    """Serve the production build without exposing arbitrary local files."""
+    index = WEB / "index.html"
+    if not index.is_file():
+        raise HTTPException(
+            404, detail="Frontend non compilato: eseguire npm run build in frontend/"
+        )
+    if path:
+        if path.startswith("api/"):
+            raise HTTPException(404, detail="Endpoint API non trovato")
+        asset = (WEB / path).resolve()
+        if asset.is_relative_to(WEB.resolve()) and asset.is_file():
+            return FileResponse(asset)
+        if path.startswith("assets/") or "." in Path(path).name:
+            raise HTTPException(404, detail="Risorsa non trovata")
+    return FileResponse(index)

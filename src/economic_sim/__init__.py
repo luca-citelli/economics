@@ -1,6 +1,6 @@
 """Core indipendente da API, browser e tempo reale."""
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 from economic_sim.simulation import Simulation
 
